@@ -48,7 +48,7 @@ Proyecto desarrollado para **UCAio**, la software factory de la UCA — cátedra
 
 | Integrante | A cargo de |
 |---|---|
-| Mateo | ABM de Cocheras |
-| Tincho | Login y ABM de Usuarios |
+| Devoto | ABM de Cocheras |
+| Coronel | Login y ABM de Usuarios |
 | Denti | Visitantes, Vehículos, Reservas y Base de Datos |
 
