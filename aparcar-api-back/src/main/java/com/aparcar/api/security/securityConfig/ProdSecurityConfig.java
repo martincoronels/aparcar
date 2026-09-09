@@ -96,8 +96,8 @@ public class ProdSecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(requests -> requests
                         .requestMatchers("/users/**").hasAuthority("ADMIN")
-                        .requestMatchers("/api/v1/reservas/**", "/api/v1/vehiculos/**", "/login",
-                                "/actuator/health").authenticated()
+                        .requestMatchers("/api/v1/reservas/**", "/api/v1/vehiculos/**", "/api/v1/visitantes/**",
+                                "/login", "/actuator/health").authenticated()
                         .requestMatchers("/api/v1/cocheras/disponibles", "/register", "/forgot-password",
                                 "/reset-password").permitAll()
                         .requestMatchers("/actuator/**").access((authentication, ctx) -> {
