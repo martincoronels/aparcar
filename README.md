@@ -1,16 +1,64 @@
-# aparcar
+<div align="center">
 
-Sistema web para la gestión y reserva de estacionamientos — Proyecto Integral de Desarrollo.
+# 🅿️ AparcAR
 
-El proyecto tiene dos partes independientes en este mismo repo:
-- **`aparcar-api-back`**: backend (Spring Boot + Postgres)
-- **`aparcar-front`**: frontend (Next.js)
+### Nadie debería dar vueltas buscando dónde estacionar.
 
-Esta guía asume que **no tenés nada instalado todavía**. Seguila en orden.
+![Sprint](https://img.shields.io/badge/Sprint-1_MVP-8b5cf6?style=flat-square)
+![Backend](https://img.shields.io/badge/Backend-Java_%2F_Spring_Boot-6db33f?style=flat-square)
+![Frontend](https://img.shields.io/badge/Frontend-Next.js_%2F_React-000000?style=flat-square)
+![Status](https://img.shields.io/badge/Estado-En_desarrollo-orange?style=flat-square)
+
+</div>
 
 ---
 
-## 0. Instalar lo necesario (una sola vez por máquina)
+## El problema
+
+Oficinas, universidades, sanatorios y organizadores de eventos administran sus cocheras a ojo: planillas sueltas, un guardia anotando patentes a mano, visitantes que llegan sin saber si van a tener lugar. El resultado es siempre el mismo — **sobreocupación, demoras en el acceso y cero control real de quién entra al predio.**
+
+## Qué es AparcAR
+
+**AparcAR** es la plataforma que un establecimiento usa para poner orden en su estacionamiento: cada visitante con su vehículo, su reserva y su cochera asignada — sin superposiciones, sin sorpresas en la barrera.
+
+- 🔐 **Acceso controlado** para el personal interno del establecimiento
+- 🧍 **Registro de visitantes** y sus vehículos (patente y tipo)
+- 🅿️ **Cocheras clasificadas** por número, sector y tipo (auto, moto, accesible, carga)
+- 📅 **Reservas por fecha**, con asignación de una cochera compatible
+- 🚫 **Cero sobreocupación** — el sistema jamás asigna dos reservas al mismo lugar
+
+## Cómo está armado
+
+Este repositorio contiene las dos mitades del proyecto:
+
+| Carpeta | Qué encontrás ahí |
+|---|---|
+| [`aparcar-api-back/`](./aparcar-api-back) | Backend — Java, Spring Boot, PostgreSQL |
+| [`aparcar-front/`](./aparcar-front) | Frontend — Next.js, React |
+
+Cada una tiene su propio README con detalles técnicos específicos, pero la guía de instalación y ejecución completa (paso a paso, para levantar todo desde cero) está más abajo en este mismo archivo. También hay un [`ARCHIVOS.md`](./ARCHIVOS.md) con el detalle de qué hace cada archivo del proyecto.
+
+## Estado actual
+
+🚧 **Sprint 1 — primer MVP en desarrollo.** El foco de esta etapa: login de usuarios internos, ABM de cocheras, registro de visitantes y sus vehículos, y creación de reservas.
+
+## Equipo
+
+Proyecto desarrollado para **UCAio**, la software factory de la UCA — cátedra de Proyecto Integral de Desarrollo.
+
+| Integrante | A cargo de |
+|---|---|
+| Devoto | ABM de Cocheras |
+| Coronel | Login y ABM de Usuarios |
+| Denti | Visitantes, Vehículos, Reservas y Base de Datos |
+
+---
+
+# 🚀 Instalación y ejecución
+
+Esta guía asume que **no tenés nada instalado todavía**. Seguila en orden.
+
+## 1. Instalar lo necesario (una sola vez por máquina)
 
 | Herramienta | Para qué | Descarga |
 |---|---|---|
@@ -30,7 +78,7 @@ npm --version
 
 ---
 
-## 1. Clonar el repo
+## 2. Clonar el repo
 
 ```bash
 git clone https://github.com/martincoronels/aparcar.git
@@ -39,7 +87,7 @@ cd aparcar
 
 ---
 
-## 2. Backend — build + run
+## 3. Backend — build + run
 
 > No hace falta instalar Java ni Maven: todo el "build" pasa **dentro** del contenedor de Docker.
 
@@ -78,7 +126,7 @@ La terminal se queda mostrando logs — **es lo esperado**, significa que el ser
 
 ---
 
-## 3. Frontend — build + run
+## 4. Frontend — build + run
 
 Abrí **otra terminal nueva** (dejá la del backend corriendo) y desde la raíz del repo:
 
@@ -124,7 +172,7 @@ npm start
 
 ---
 
-## 4. Orden de arranque
+## 5. Orden de arranque
 
 1. Docker Desktop abierto y corriendo.
 2. Backend (`docker compose up --build` en `aparcar-api-back`) — esperar a ver `Started AparcarApiApplication`.
@@ -134,7 +182,7 @@ El frontend necesita al backend corriendo para funcionar (login, listar visitant
 
 ---
 
-## 5. Monitoreo — cómo saber si algo anda mal
+## 6. Monitoreo — cómo saber si algo anda mal
 
 | Dónde | Señal de problema | Causa probable |
 |---|---|---|
@@ -146,7 +194,7 @@ El frontend necesita al backend corriendo para funcionar (login, listar visitant
 
 ---
 
-## 6. Apagar todo
+## 7. Apagar todo
 
 En cada terminal, en este orden:
 1. Frontend: `Ctrl+C`
@@ -154,7 +202,7 @@ En cada terminal, en este orden:
 
 ---
 
-## 7. Correr los tests (backend)
+## 8. Correr los tests (backend)
 
 Los tests corren contra una base en memoria (H2): no necesitan `db` ni `server` levantados. Como la imagen final del backend no incluye Maven (solo el `.jar` ya compilado), para correr los tests sin instalar Maven en tu máquina usá un contenedor temporal con la imagen de Maven, montando el código fuente:
 
