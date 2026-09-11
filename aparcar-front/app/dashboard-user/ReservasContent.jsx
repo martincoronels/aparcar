@@ -6,7 +6,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { toast } from "sonner";
 import api from "@/app/api";
-import ProtectedRoute from "@/components/ProtectedRoute";
 
 const reservaSchema = z.object({
   visitanteId: z.string().min(1, "Selecciona un visitante"),
@@ -35,7 +34,7 @@ function EstadoBadge({ estado }) {
   );
 }
 
-function ReservasPageContent() {
+export default function ReservasContent() {
   const [visitantes, setVisitantes] = useState([]);
   const [vehiculos, setVehiculos] = useState([]);
   const [cocheras, setCocheras] = useState([]);
@@ -245,13 +244,5 @@ function ReservasPageContent() {
         </div>
       </div>
     </div>
-  );
-}
-
-export default function ReservasPage() {
-  return (
-    <ProtectedRoute allowedRoles={[]}>
-      <ReservasPageContent />
-    </ProtectedRoute>
   );
 }
