@@ -63,42 +63,106 @@ public class DevSecurityConfig {
      * @return The configured SecurityFilterChain.
      */
     @Bean
-    SecurityFilterChain securityFilterChain(HttpSecurity http,
+    SecurityFilterChain securityFilterChain(
+            HttpSecurity http,
             IRevokedUserCache revokedUserCache,
             SecurityContextRepository securityContextRepository,
             Environment env) {
+
         String secret = env.getProperty(JWT_SECRET_KEY, JWT_SECRET_DEFAULT);
         boolean isDev = Arrays.asList(env.getActiveProfiles()).contains(DEV_ENV);
 
-        JWTValidationFilter jwtValidationFilter = new JWTValidationFilter(revokedUserCache, secret, isDev);
-        JWTGeneratorFilter jwtGeneratorFilter = new JWTGeneratorFilter(secret);
-        RateLimitFilter rateLimitFilter = new RateLimitFilter();
+        JWTValidationFilter jwtValidationFilter =
+                new JWTValidationFilter(revokedUserCache, secret, isDev);
+
+        JWTGeneratorFilter jwtGeneratorFilter =
+                new JWTGeneratorFilter(secret);
+
+        RateLimitFilter rateLimitFilter =
+                new RateLimitFilter();
 
         return http
-                .securityContext(context -> context.securityContextRepository(securityContextRepository))
-                .sessionManagement(config -> config.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .cors(corsCustomizer -> corsCustomizer.configurationSource(request -> {
-                    CorsConfiguration config = new CorsConfiguration();
-                    config.setAllowedOriginPatterns(List.of("http://localhost:*"));
-                    config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-                    config.setAllowedHeaders(List.of("Authorization", "Content-Type", "Accept"));
-                    config.setExposedHeaders(List.of("Authorization"));
-                    config.setAllowCredentials(true);
-                    config.setMaxAge(3600L);
-                    return config;
-                }))
+                .securityContext(context ->
+                        context.securityContextRepository(securityContextRepository))
+                .sessionManagement(config ->
+                        config.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .cors(corsCustomizer ->
+                        corsCustomizer.configurationSource(request -> {
+                            CorsConfiguration config = new CorsConfiguration();
+
+                            config.setAllowedOriginPatterns(
+                                    List.of("http://localhost:*"));
+
+                            config.setAllowedMethods(
+                                    List.of(
+                                            "GET",
+                                            "POST",
+                                            "PUT",
+                                            "DELETE",
+                                            "OPTIONS"
+                                    ));
+
+                            config.setAllowedHeaders(
+                                    List.of(
+                                            "Authorization",
+                                            "Content-Type",
+                                            "Accept"
+                                    ));
+
+                            config.setExposedHeaders(
+                                    List.of("Authorization"));
+
+                            config.setAllowCredentials(true);
+                            config.setMaxAge(3600L);
+
+                            return config;
+                        }))
                 .csrf(AbstractHttpConfigurer::disable)
+
                 .authorizeHttpRequests(requests -> requests
-                        .requestMatchers("/users/**").hasAuthority("ADMIN")
-                        .requestMatchers("/api/v1/reservas/**", "/api/v1/vehiculos/**", "/api/v1/visitantes/**",
-                                "/login").authenticated()
-                        .requestMatchers("/api/v1/cocheras/disponibles", "/register", "/forgot-password",
-                                "/reset-password", "/actuator/health").permitAll()
+
+                        // Solo ADMIN puede gestionar usuarios
+                        // y registrar nuevos usuarios internos.
+                        .requestMatchers(
+                                "/users/**",
+                                "/api/v1/usuarios/**",
+                                "/register"
+                        ).hasAuthority("ADMIN")
+
+                        // Cualquier usuario autenticado.
+                        .requestMatchers(
+                                "/api/v1/reservas/**",
+                                "/api/v1/vehiculos/**",
+                                "/api/v1/visitantes/**",
+                                "/login"
+                        ).authenticated()
+
+                        // Endpoints públicos.
+                        .requestMatchers(
+                                "/api/v1/cocheras/disponibles",
+                                "/forgot-password",
+                                "/reset-password",
+                                "/actuator/health"
+                        ).permitAll()
+
                         .requestMatchers("/**").permitAll())
-                .addFilterAfter(jwtGeneratorFilter, BasicAuthenticationFilter.class)
-                .addFilterBefore(jwtValidationFilter, BasicAuthenticationFilter.class)
-                .addFilterBefore(rateLimitFilter, JWTValidationFilter.class)
-                .httpBasic(config -> config.authenticationEntryPoint(new CustomBasicAuthenticationEntryPoint()))
+
+                .addFilterAfter(
+                        jwtGeneratorFilter,
+                        BasicAuthenticationFilter.class)
+
+                .addFilterBefore(
+                        jwtValidationFilter,
+                        BasicAuthenticationFilter.class)
+
+                .addFilterBefore(
+                        rateLimitFilter,
+                        JWTValidationFilter.class)
+
+                .httpBasic(config ->
+                        config.authenticationEntryPoint(
+                                new CustomBasicAuthenticationEntryPoint()))
+
                 .build();
     }
 

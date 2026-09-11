@@ -24,7 +24,6 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import javax.crypto.SecretKey;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
-import java.util.List;
 
 import static com.aparcar.api.config.ApplicationConstants.*;
 
@@ -81,7 +80,7 @@ public class JWTValidationFilter extends OncePerRequestFilter {
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
-        return List.of("/login", "/register").contains(request.getServletPath());
+        return request.getServletPath().equals("/login");
     }
 
     private void sendUnauthorized(HttpServletRequest request, HttpServletResponse response, String exceptionMessage)

@@ -1,6 +1,8 @@
 package com.aparcar.api.service.impl;
 
 import com.aparcar.api.component.IRevokedUserCache;
+import com.aparcar.api.dto.auth.UpdateUserDto;
+import com.aparcar.api.dto.auth.UserResponseDto;
 import com.aparcar.api.entity.auth.AppUser;
 import com.aparcar.api.entity.auth.InactiveUsersDto;
 import com.aparcar.api.exception.NotFoundException;
@@ -11,10 +13,17 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+import java.util.UUID;
+import java.util.stream.Collectors;
+
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class UserService implements IUserService {
+
     private final AppUserRepository appUserRepository;
     private final IRevokedUserCache revokedUserCache;
 
@@ -24,7 +33,9 @@ public class UserService implements IUserService {
                 .orElseThrow(() -> new NotFoundException("User not found."));
 
         user.setIsActive(true);
+
         log.info("Activating user: {}", email);
+
         appUserRepository.save(user);
     }
 
@@ -53,5 +64,47 @@ public class UserService implements IUserService {
 
         log.info("Deleting user: {}", user.getEmail());
         appUserRepository.delete(user);
+    }
+
+    @Override
+    public List<UserResponseDto> getUsers() {
+        return appUserRepository.findAll()
+                .stream()
+                .map(this::toResponseDto)
+                .toList();
+    }
+
+    @Override
+    public UserResponseDto updateUser(UUID id, UpdateUserDto dto) {
+        AppUser user = appUserRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("User not found."));
+
+        user.setNombre(dto.nombre());
+        user.setTelefono(dto.telefono());
+        user.setAuthorities(new HashSet<>(dto.authorities()));
+
+        AppUser savedUser = appUserRepository.save(user);
+
+        log.info("Updating user: {}", savedUser.getEmail());
+
+        return toResponseDto(savedUser);
+    }
+
+    private UserResponseDto toResponseDto(AppUser user) {
+        Set<String> authorities = user.getAuthorities() == null
+                ? Set.of()
+                : user.getAuthorities()
+                        .stream()
+                        .map(Enum::name)
+                        .collect(Collectors.toSet());
+
+        return new UserResponseDto(
+                user.getId(),
+                user.getNombre(),
+                user.getEmail(),
+                user.getTelefono(),
+                authorities,
+                user.getIsActive()
+        );
     }
 }
