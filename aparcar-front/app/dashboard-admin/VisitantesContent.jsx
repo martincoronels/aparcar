@@ -5,7 +5,6 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { toast } from "sonner";
 import api from "@/app/api";
-import ProtectedRoute from "@/components/ProtectedRoute";
 
 const PATENTE_REGEX = /^([A-Za-z]{3}[0-9]{3}|[A-Za-z]{2}[0-9]{3}[A-Za-z]{2})$/;
 
@@ -27,7 +26,7 @@ const inputClasses =
   "block w-full rounded-xl border-0 py-3 px-4 text-white bg-zinc-800 ring-1 ring-inset ring-zinc-700 placeholder:text-zinc-400 focus:z-10 focus:ring-2 focus:ring-inset focus:ring-emerald-500 sm:text-sm sm:leading-6 transition-all";
 const labelClasses = "block text-sm font-medium text-zinc-300 mb-1";
 
-function VisitantesPageContent() {
+export default function VisitantesContent() {
   const {
     register,
     handleSubmit,
@@ -141,13 +140,5 @@ function VisitantesPageContent() {
         </div>
       </div>
     </div>
-  );
-}
-
-export default function VisitantesPage() {
-  return (
-    <ProtectedRoute allowedRoles={[]}>
-      <VisitantesPageContent />
-    </ProtectedRoute>
   );
 }

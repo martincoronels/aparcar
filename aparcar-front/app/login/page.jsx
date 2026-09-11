@@ -6,6 +6,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { toast } from "sonner";
+import { jwtDecode } from "jwt-decode";
 import api from "../api";
 import { useAuthStore } from "../../store/authStore";
 
@@ -48,7 +49,14 @@ export default function LoginPage() {
       const token = authHeader.replace(/^Bearer\s+/i, "");
       setAuth(token);
       toast.success("Inicio de sesión exitoso");
-      router.push("/");
+
+      // La verificación de a dónde mandar a cada rol pasa acá, justo al
+      // aceptar el login — no como un redirect automático en otra página.
+      const roles = jwtDecode(token).authorities
+        ?.split(",")
+        .map((r) => r.trim())
+        .filter(Boolean) || [];
+      router.push(roles.includes("ADMIN") ? "/dashboard-admin" : "/dashboard-user");
     } catch (err) {
       toast.error(
         err.response?.status === 401
