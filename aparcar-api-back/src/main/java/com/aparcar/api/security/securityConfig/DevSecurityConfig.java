@@ -90,7 +90,8 @@ public class DevSecurityConfig {
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(requests -> requests
                         .requestMatchers("/users/**").hasAuthority("ADMIN")
-                        .requestMatchers("/api/v1/reservas/**", "/api/v1/vehiculos/**", "/login").authenticated()
+                        .requestMatchers("/api/v1/reservas/**", "/api/v1/vehiculos/**", "/api/v1/visitantes/**",
+                                "/login").authenticated()
                         .requestMatchers("/api/v1/cocheras/disponibles", "/register", "/forgot-password",
                                 "/reset-password", "/actuator/health").permitAll()
                         .requestMatchers("/**").permitAll())
