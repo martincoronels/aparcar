@@ -3,8 +3,9 @@
 Referencia de qué hace cada archivo del proyecto, para no perderse en el repo. No incluye `node_modules/`, `.next/`, `target/`, `.git/` ni `.idea/` (carpetas generadas, no código del programa).
 
 Convenciones:
-- 🆕 = archivo creado durante el sprint de Visitantes/Vehículos/Cocheras/Reservas
-- ✏️ = archivo que ya existía y fue modificado en ese mismo sprint
+
+- 🆕 = archivo agregado durante el desarrollo actual.
+- ✏️ = archivo existente que fue modificado.
 
 ---
 
@@ -14,285 +15,576 @@ Convenciones:
 |---|---|
 | `.gitignore` | Ignora `*.class`, `*.jar`, logs, etc. a nivel de todo el repo |
 | `README.md` | Guía de instalación y ejecución del proyecto completo (front + back) |
-| `ARCHIVOS.md` 🆕 | Este archivo |
+| `ARCHIVOS.md` | Este archivo: mapa general de la estructura del proyecto |
 
 ---
 
-## `aparcar-api-back/` — Backend (Spring Boot)
+# `aparcar-api-back/` — Backend (Spring Boot)
 
-### Raíz del backend
+## Raíz del backend
 
 | Archivo | Qué hace |
 |---|---|
 | `.env` / `.env.example` | Variables de entorno (credenciales de DB, mail, etc.). `.env` no se sube a git; `.env.example` es la plantilla |
-| `.gitignore` 🆕 | Ignora `target/` (carpeta de compilación de Maven) |
-| `.pre-commit-config.yaml` | Hooks que corren antes de cada commit: valida YAML, detecta secretos (gitleaks), limpia espacios en blanco |
-| `Makefile` | Comandos `make run` / `make test` / `make build` / `make migrate` / `make cover` / `make profile` (alternativa a Task) |
-| `Taskfile.yml` | Los mismos comandos que el Makefile pero para la herramienta [Task](https://taskfile.dev/) |
-| `README.md` | Instrucciones específicas del backend (Quick Start, variables de entorno, migraciones) |
-| `docker-compose.yaml` | Define los servicios `db` (Postgres) y `server` (esta API) para levantar todo con Docker |
-| `pom.xml` | Dependencias y configuración de Maven (Spring Boot 4, Postgres, Liquibase, JWT, Lombok, ModelMapper, etc.) |
+| `.gitignore` | Ignora `target/` y otros archivos generados |
+| `.pre-commit-config.yaml` | Hooks que corren antes de cada commit: valida YAML, detecta secretos, limpia espacios en blanco |
+| `Makefile` | Comandos `make run`, `make test`, `make build`, `make migrate`, etc. |
+| `Taskfile.yml` | Alternativa al Makefile usando Task |
+| `README.md` | Instrucciones específicas del backend |
+| `docker-compose.yaml` | Define los servicios `db` (PostgreSQL) y `server` (API Spring Boot) |
+| `pom.xml` | Dependencias y configuración Maven del backend |
 
-### `dockerfiles/`
+---
 
-| Archivo | Qué hace |
-|---|---|
-| `db.Dockerfile` | Imagen de Postgres, copia el script de init de la base |
-| `db-start.sh` | Script que corre al iniciar el contenedor de Postgres (solo loguea el nombre de la DB) |
-| `server.Dockerfile` | Build multi-stage: compila el backend con Maven en una imagen, y copia solo el `.jar` final a una imagen liviana de Java |
-
-### `scripts/`
+## `dockerfiles/`
 
 | Archivo | Qué hace |
 |---|---|
-| `create-migration.go` | El programa detrás de `task migrate` / `make migrate`: compara las entidades de Java contra la base real y genera el YAML de Liquibase automáticamente |
+| `db.Dockerfile` | Imagen de PostgreSQL usada por Docker |
+| `db-start.sh` | Script ejecutado al iniciar el contenedor de base de datos |
+| `server.Dockerfile` | Compila el backend con Maven y genera la imagen que ejecuta el `.jar` |
 
-### `src/main/java/com/aparcar/api/` — código fuente
+---
 
-**Raíz**
+## `scripts/`
+
 | Archivo | Qué hace |
 |---|---|
-| `AparcarApiApplication.java` | Punto de entrada (`main`) de toda la aplicación Spring Boot |
+| `create-migration.go` | Programa usado por `task migrate` / `make migrate` para generar migraciones Liquibase |
 
-**`component/`** — piezas reusables inyectables
+---
+
+# `src/main/java/com/aparcar/api/`
+
+## Raíz
+
+| Archivo | Qué hace |
+|---|---|
+| `AparcarApiApplication.java` | Punto de entrada (`main`) de la aplicación Spring Boot |
+
+---
+
+## `component/`
+
+Piezas reutilizables e inyectables.
+
 | Archivo | Qué hace |
 |---|---|
 | `IEmailSender.java` | Contrato para enviar emails |
-| `IRevokedUserCache.java` | Contrato para el cache de tokens revocados (logout/borrado de usuario) |
-| `OTPCleanup.java` | Tarea programada (corre cada hora) que borra códigos OTP vencidos |
-| `impl/RevokedUserCache.java` | Implementación del cache de revocados usando Caffeine (en memoria) |
-| `impl/SpringEmailSender.java` | Implementación real del envío de emails vía `JavaMailSender` |
+| `IRevokedUserCache.java` | Contrato para el cache de JWT revocados |
+| `OTPCleanup.java` | Tarea programada que elimina códigos OTP vencidos |
+| `impl/RevokedUserCache.java` | Implementación del cache de usuarios revocados usando Caffeine |
+| `impl/SpringEmailSender.java` | Implementación del envío de emails con `JavaMailSender` |
 
-**`config/`** — configuración general de Spring
+---
+
+## `config/`
+
+Configuración general de Spring.
+
 | Archivo | Qué hace |
 |---|---|
-| `ApplicationConstants.java` | Constantes compartidas: nombres de perfiles (`dev`/`prod`/`test`), claves de JWT |
-| `AsyncConfig.java` | Configura el pool de hilos para tareas `@Async` (ej: notificaciones) |
-| `ModelMapperConfig.java` | Registra el bean de ModelMapper (mapeo automático entidad↔DTO) |
-| `SchedulingConfig.java` | Configura el scheduler para tareas `@Scheduled` (como `OTPCleanup`) |
-| `WebClientConfig.java` | Bean de `WebClient` para llamadas HTTP salientes |
-| `WebConfig.java` | Filtro para manejar headers `X-Forwarded-*` (útil detrás de un proxy) |
-| `middleware/DevExceptionHandler.java` | Traductor de excepciones → JSON de error, **solo en dev** (devuelve detalles completos del error) |
-| `middleware/ProdExceptionHandler.java` | Igual que el anterior pero para prod (mensajes genéricos, no filtra detalles internos) |
+| `ApplicationConstants.java` | Constantes compartidas: perfiles y configuración JWT |
+| `AsyncConfig.java` | Configura ejecución de tareas `@Async` |
+| `ModelMapperConfig.java` | Configura ModelMapper |
+| `SchedulingConfig.java` | Configura tareas `@Scheduled` |
+| `WebClientConfig.java` | Configura el bean de `WebClient` |
+| `WebConfig.java` | Maneja headers `X-Forwarded-*` |
+| `middleware/DevExceptionHandler.java` | Convierte excepciones a respuestas JSON detalladas en desarrollo |
+| `middleware/ProdExceptionHandler.java` | Manejo de errores para producción |
 
-**`controller/`** — endpoints REST
+---
+
+## `controller/`
+
+Endpoints REST de la aplicación.
+
 | Archivo | Qué hace |
 |---|---|
 | `AuthController.java` | `/register`, `/login`, `/forgot-password`, `/reset-password` |
-| `CocheraController.java` 🆕 | `POST /api/v1/cocheras`, `GET /api/v1/cocheras`, `GET /api/v1/cocheras/disponibles` |
-| `ReservaController.java` 🆕 | `POST /api/v1/reservas`, `GET /api/v1/reservas`, `GET /api/v1/reservas/{id}` |
-| `UserController.java` | `/users/activate`, `/users/inactive`, `DELETE /users` (gestión admin de usuarios) |
-| `VehiculoController.java` 🆕 | `POST /api/v1/vehiculos`, `GET /api/v1/vehiculos` (con filtro `?visitanteId=`), `GET /api/v1/vehiculos/{id}` |
-| `VisitanteController.java` 🆕 | `POST /api/v1/visitantes`, `GET /api/v1/visitantes`, `GET /api/v1/visitantes/{id}` |
+| `CocheraController.java` | Gestión de cocheras y consulta de cocheras disponibles |
+| `ReservaController.java` | Alta y consulta de reservas |
+| `UserController.java` ✏️ | Gestión ADMIN de usuarios: activar, listar inactivos, eliminar, listar todos y editar |
+| `VehiculoController.java` | Alta y consulta de vehículos |
+| `VisitanteController.java` | Alta y consulta de visitantes |
 
-**`dto/`** — objetos de entrada/salida de la API
-| Archivo | Qué hace |
-|---|---|
-| `ErrorResponseDto.java` | Formato estándar de respuesta de error (`code`, `message`, `details`) |
-| `auth/RegisteredUserDto.java` | Respuesta al registrarse |
-| `auth/RegistrationDto.java` | Body de `POST /register` |
-| `auth/ResetPasswordDto.java` | Body de `POST /reset-password` |
-| `auth/UserEmailDto.java` | Body genérico `{ email }` (activar/borrar usuario) |
-| `email/PlainEmailData.java` | Estructura interna para armar un email (asunto, cuerpo, destinatarios) |
-| `reserva/VisitanteRequestDto.java` 🆕 | Body para crear un visitante |
-| `reserva/VisitanteResponseDto.java` 🆕 | Respuesta con los datos de un visitante |
-| `reserva/VehiculoRequestDto.java` 🆕 | Body para crear un vehículo (valida formato de patente) |
-| `reserva/VehiculoResponseDto.java` 🆕 | Respuesta con los datos de un vehículo |
-| `reserva/CocheraRequestDto.java` 🆕 | Body para crear una cochera |
-| `reserva/CocheraResponseDto.java` 🆕 | Respuesta con los datos de una cochera |
-| `reserva/ReservaRequestDto.java` 🆕 | Body para crear una reserva (`visitanteId`, `vehiculoId`, `cocheraId`, `fecha`) |
-| `reserva/ReservaResponseDto.java` 🆕 | Respuesta con la reserva completa (visitante/vehículo/cochera anidados) |
+### Endpoints de gestión de usuarios
 
-**`entity/`** — clases `@Entity` (mapean 1 a 1 con tablas)
-| Archivo | Qué hace |
-|---|---|
-| `auth/AppAuthority.java` | Enum de roles: `USER`, `ADMIN` |
-| `auth/AppUser.java` | Tabla `app_users` — el usuario interno que se loguea |
-| `auth/InactiveUsersDto.java` | Wrapper de la lista de emails inactivos (pese al nombre "Dto", vive en `entity/auth`) |
-| `auth/OneTimePassword.java` | Tabla `otp_codes` — códigos de recuperación de contraseña |
-| `reserva/Visitante.java` 🆕 | Tabla `visitantes` |
-| `reserva/Vehiculo.java` 🆕 | Tabla `vehiculos`, relacionado a un `Visitante` |
-| `reserva/VehiculoTipo.java` 🆕 | Enum `AUTO`, `MOTO`, `CARGA` |
-| `reserva/Cochera.java` 🆕 | Tabla `cocheras` (esta entidad no existía; la creé yo para el sprint) |
-| `reserva/CocheraTipo.java` 🆕 | Enum `AUTO`, `MOTO`, `ACCESIBLE`, `CARGA` |
-| `reserva/CocheraEstado.java` 🆕 | Enum `HABILITADA`, `DESHABILITADA` (estado operativo, no de disponibilidad por fecha) |
-| `reserva/Reserva.java` 🆕 | Tabla `reservas`, relacionada a `Visitante` + `Vehiculo` + `Cochera` |
-| `reserva/ReservaEstado.java` 🆕 | Enum `CONFIRMADA`, `CANCELADA` |
+Actualmente la administración de usuarios utiliza:
 
-**`events/`** — listeners de eventos de Spring Security (solo logging)
-| Archivo | Qué hace |
-|---|---|
-| `AuthenticationEventsListener.java` | Loguea logins exitosos/fallidos |
-| `AuthorizationEventsListener.java` | Loguea intentos de acceso denegados |
+```text
+POST   /register
+GET    /api/v1/usuarios
+PUT    /api/v1/usuarios/{id}
+POST   /users/activate
+GET    /users/inactive
+DELETE /users
+```
 
-**`exception/`** — errores de negocio
-| Archivo | Qué hace |
-|---|---|
-| `NotFoundException.java` | "Esto que buscás no existe" → HTTP 404 |
-| `OTPException.java` | Error específico de códigos OTP inválidos/vencidos |
-| `OTPExceptionReason.java` | Enum con los mensajes de `OTPException` |
-| `ValidationException.java` | "Esto que mandaste no es válido" → HTTP 400 (la usan las reglas de negocio de Reserva/Visitante/Vehículo/Cochera) |
+`POST /register`, `GET /api/v1/usuarios`, `PUT /api/v1/usuarios/{id}` y los endpoints `/users/**` están protegidos para rol `ADMIN`.
 
-**`filters/`** — filtros HTTP de bajo nivel (se ejecutan en cada request)
-| Archivo | Qué hace |
-|---|---|
-| `ApiVersionFilter.java` | Agrega el header `X-Api-Version` a cada respuesta |
-| `JWTGeneratorFilter.java` | Genera el JWT después de un login exitoso |
-| `JWTValidationFilter.java` | Valida el JWT en cada request y carga el usuario autenticado |
-| `RateLimitFilter.java` | Limita intentos por IP en `/login`, `/register`, `/forgot-password` (anti fuerza bruta) |
-| `StripPortFromXffFilter.java` | Limpia el puerto de la IP del cliente en headers de proxy |
+---
 
-**`repository/`** — acceso a datos (Spring Data JPA)
-| Archivo | Qué hace |
-|---|---|
-| `AppUserRepository.java` | Consultas sobre `AppUser` |
-| `CocheraRepository.java` 🆕 | Consultas sobre `Cochera` (`existsByNumero`, `findByEstado`) |
-| `OneTimePasswordRepository.java` | Consultas sobre `OneTimePassword` |
-| `ReservaRepository.java` 🆕 | Consultas sobre `Reserva` (chequeo de sobreocupación por fecha) |
-| `VehiculoRepository.java` 🆕 | Consultas sobre `Vehiculo` (`existsByPatente`, `findByVisitanteId`) |
-| `VisitanteRepository.java` 🆕 | Consultas sobre `Visitante` (`existsByDocumento`) |
+## `dto/`
 
-**`security/`** — autenticación y autorización
-| Archivo | Qué hace |
-|---|---|
-| `AppUserDetailsService.java` | Le dice a Spring Security cómo cargar un usuario por email |
-| `CustomBasicAuthenticationEntryPoint.java` | Qué responder cuando alguien pega a una ruta protegida sin login (JSON 401) |
-| `authenticationProvider/DevAuthenticationProvider.java` | Lógica de login en **dev**: no valida la contraseña (comodidad para probar) |
-| `authenticationProvider/ProdAuthenticationProvider.java` | Lógica de login en **prod**: sí valida la contraseña contra el hash |
-| `securityConfig/DevSecurityConfig.java` ✏️ | Qué rutas requieren login en dev. Le agregué `/api/v1/visitantes/**` |
-| `securityConfig/ProdSecurityConfig.java` ✏️ | Lo mismo para prod. Mismo agregado |
+Objetos usados para entrada y salida de información de la API.
 
-**`service/` + `service/impl/`** — lógica de negocio
-| Archivo | Qué hace |
-|---|---|
-| `IAuthService.java` / `impl/AuthService.java` | Registro, login, recuperación de contraseña |
-| `ICocheraService.java` / `impl/CocheraService.java` 🆕 | Crear cochera, listar disponibles (filtra por fecha + tipo de vehículo compatible) |
-| `IReservaService.java` / `impl/ReservaService.java` 🆕 | **Acá viven las 2 reglas de negocio del sprint**: compatibilidad cochera↔vehículo, y no permitir 2 reservas confirmadas para la misma cochera y fecha |
-| `IUserService.java` / `impl/UserService.java` | Activar/desactivar/borrar usuarios (admin) |
-| `IVehiculoService.java` / `impl/VehiculoService.java` 🆕 | Crear vehículo (normaliza patente a mayúsculas), listar por visitante |
-| `IVisitanteService.java` / `impl/VisitanteService.java` 🆕 | Crear visitante (valida documento único), listar |
-
-### `src/main/resources/` — configuración
+### Generales
 
 | Archivo | Qué hace |
 |---|---|
-| `application.yml` | Configuración base (nombre de la app, JPA, mail, Swagger en `/docs`) |
-| `application-dev.yml` ✏️ | Overrides para desarrollo. Le agregué `ddl-auto: update` (ver sección de abajo) |
-| `application-prod.yml` | Overrides para producción |
-| `application-test.yml` | Usa H2 en memoria en vez de Postgres, para que los tests no necesiten Docker |
-| `banner.txt` | El arte ASCII "AparcAR" que se ve al arrancar |
-| `db/changelog/db.changelog-master.yaml` ✏️ | Lista maestra de migraciones de Liquibase. Le agregué el `include` de la 002 |
-| `db/changelog/001-initial-schema.yaml` | **Está vacío** — migración original que nunca se completó (ver sección de `migrate`) |
-| `db/changelog/002-visitantes-vehiculos-cocheras-reservas.yaml` 🆕 | Crea las tablas `visitantes`, `vehiculos`, `cocheras`, `reservas` + datos de ejemplo de cocheras |
+| `ErrorResponseDto.java` | Formato estándar de errores (`code`, `message`, `details`) |
 
-### `src/test/java/com/aparcar/api/` — tests
+### `dto/auth/`
 
 | Archivo | Qué hace |
 |---|---|
-| `AparcarApiApplicationTests.java` | Test mínimo: que el contexto de Spring levante sin errores |
-| `component/OTPCleanupTests.java` | Tests del borrado automático de OTPs vencidos |
-| `component/RevokedUserCacheTests.java` | Tests del cache de tokens revocados |
+| `RegisteredUserDto.java` | Respuesta devuelta al crear un usuario |
+| `RegistrationDto.java` | Body de `POST /register`: nombre, email, password y teléfono |
+| `ResetPasswordDto.java` | Body para cambiar contraseña mediante OTP |
+| `UserEmailDto.java` | Body genérico `{ email }`, utilizado para activar/eliminar usuarios |
+| `UpdateUserDto.java` 🆕 | Body para editar nombre, teléfono y authorities de un usuario |
+| `UserResponseDto.java` 🆕 | Respuesta administrativa de usuario: id, nombre, email, teléfono, authorities y estado; no expone password |
+
+### `dto/email/`
+
+| Archivo | Qué hace |
+|---|---|
+| `PlainEmailData.java` | Datos internos utilizados para enviar un email |
+
+### `dto/reserva/`
+
+| Archivo | Qué hace |
+|---|---|
+| `VisitanteRequestDto.java` | Datos recibidos para crear un visitante |
+| `VisitanteResponseDto.java` | Datos devueltos de un visitante |
+| `VehiculoRequestDto.java` | Datos recibidos para crear un vehículo |
+| `VehiculoResponseDto.java` | Datos devueltos de un vehículo |
+| `CocheraRequestDto.java` | Datos recibidos para crear una cochera |
+| `CocheraResponseDto.java` | Datos devueltos de una cochera |
+| `ReservaRequestDto.java` | Datos necesarios para crear una reserva |
+| `ReservaResponseDto.java` | Respuesta completa de una reserva |
+
+---
+
+## `entity/`
+
+Entidades JPA que representan los datos persistidos.
+
+### `entity/auth/`
+
+| Archivo | Qué hace |
+|---|---|
+| `AppAuthority.java` | Enum de roles internos: `USER` y `ADMIN` |
+| `AppUser.java` | Entidad de los usuarios internos que pueden iniciar sesión |
+| `InactiveUsersDto.java` | Wrapper con emails de usuarios inactivos |
+| `OneTimePassword.java` | Entidad de códigos OTP para recuperación de contraseña |
+
+### `entity/reserva/`
+
+| Archivo | Qué hace |
+|---|---|
+| `Visitante.java` | Entidad de visitantes |
+| `Vehiculo.java` | Entidad de vehículos asociados a visitantes |
+| `VehiculoTipo.java` | Enum `AUTO`, `MOTO`, `CARGA` |
+| `Cochera.java` | Entidad de cocheras |
+| `CocheraTipo.java` | Enum `AUTO`, `MOTO`, `ACCESIBLE`, `CARGA` |
+| `CocheraEstado.java` | Estado operativo de una cochera |
+| `Reserva.java` | Entidad de reservas |
+| `ReservaEstado.java` | Enum `CONFIRMADA`, `CANCELADA` |
+
+---
+
+## `events/`
+
+Listeners utilizados principalmente para logging de Spring Security.
+
+| Archivo | Qué hace |
+|---|---|
+| `AuthenticationEventsListener.java` | Registra logins exitosos y fallidos |
+| `AuthorizationEventsListener.java` | Registra intentos de acceso rechazados |
+
+---
+
+## `exception/`
+
+Excepciones propias del backend.
+
+| Archivo | Qué hace |
+|---|---|
+| `NotFoundException.java` | Recurso solicitado inexistente → HTTP 404 |
+| `OTPException.java` | Error relacionado con OTP |
+| `OTPExceptionReason.java` | Motivos posibles de error de OTP |
+| `ValidationException.java` | Error de validación o regla de negocio → HTTP 400 |
+
+---
+
+## `filters/`
+
+Filtros HTTP ejecutados durante los requests.
+
+| Archivo | Qué hace |
+|---|---|
+| `ApiVersionFilter.java` | Agrega el header `X-Api-Version` |
+| `JWTGeneratorFilter.java` | Genera el JWT luego de un login exitoso |
+| `JWTValidationFilter.java` ✏️ | Valida JWT y carga la autenticación; `/register` ahora también procesa JWT porque requiere ADMIN |
+| `RateLimitFilter.java` | Limita intentos sobre endpoints sensibles |
+| `StripPortFromXffFilter.java` | Normaliza la IP proveniente de headers proxy |
+
+---
+
+## `repository/`
+
+Acceso a datos usando Spring Data JPA.
+
+| Archivo | Qué hace |
+|---|---|
+| `AppUserRepository.java` ✏️ | Acceso a `AppUser`; utiliza `UUID` como tipo de ID y permite buscar usuarios por email |
+| `CocheraRepository.java` | Acceso a cocheras |
+| `OneTimePasswordRepository.java` | Acceso a códigos OTP |
+| `ReservaRepository.java` | Acceso a reservas y consultas relacionadas con disponibilidad |
+| `VehiculoRepository.java` | Acceso a vehículos |
+| `VisitanteRepository.java` | Acceso a visitantes |
+
+---
+
+## `security/`
+
+Autenticación y autorización.
+
+| Archivo | Qué hace |
+|---|---|
+| `AppUserDetailsService.java` | Carga un `AppUser` por email para Spring Security |
+| `CustomBasicAuthenticationEntryPoint.java` | Respuesta devuelta cuando una ruta requiere autenticación |
+| `authenticationProvider/DevAuthenticationProvider.java` | Autenticación de desarrollo |
+| `authenticationProvider/ProdAuthenticationProvider.java` | Autenticación de producción con validación de password |
+| `securityConfig/DevSecurityConfig.java` ✏️ | Configuración de seguridad de desarrollo; administración y alta de usuarios requieren `ADMIN` |
+| `securityConfig/ProdSecurityConfig.java` ✏️ | Configuración equivalente para producción/test |
+
+### Seguridad de usuarios
+
+Los endpoints:
+
+```text
+/users/**
+/api/v1/usuarios/**
+/register
+```
+
+requieren:
+
+```text
+authority = ADMIN
+```
+
+El login continúa disponible para usuarios autenticables mediante HTTP Basic y genera un JWT que contiene las authorities del usuario.
+
+---
+
+## `service/` + `service/impl/`
+
+Lógica de negocio.
+
+| Archivo | Qué hace |
+|---|---|
+| `IAuthService.java` / `impl/AuthService.java` | Registro, login y recuperación de contraseña |
+| `ICocheraService.java` / `impl/CocheraService.java` | Gestión y disponibilidad de cocheras |
+| `IReservaService.java` / `impl/ReservaService.java` | Lógica de reservas y validación de compatibilidad/disponibilidad |
+| `IUserService.java` / `impl/UserService.java` ✏️ | Gestión administrativa de usuarios: listar, editar, activar y eliminar |
+| `IVehiculoService.java` / `impl/VehiculoService.java` | Gestión de vehículos |
+| `IVisitanteService.java` / `impl/VisitanteService.java` | Gestión de visitantes |
+
+### Comportamiento actual de alta de usuario
+
+`AuthService.register()` crea los nuevos usuarios con:
+
+```text
+authority: USER
+isActive: false
+```
+
+Un administrador puede posteriormente modificar sus authorities, activarlos o eliminarlos desde la gestión de usuarios.
+
+---
+
+# `src/main/resources/`
+
+## Configuración
+
+| Archivo | Qué hace |
+|---|---|
+| `application.yml` | Configuración base de Spring |
+| `application-dev.yml` | Configuración específica de desarrollo; utiliza `ddl-auto: update` |
+| `application-prod.yml` | Configuración para producción |
+| `application-test.yml` | Configuración de tests con H2 |
+| `banner.txt` | Arte ASCII mostrado al iniciar AparcAR |
+
+## `db/changelog/`
+
+| Archivo | Qué hace |
+|---|---|
+| `db.changelog-master.yaml` | Lista de migraciones Liquibase |
+| `001-initial-schema.yaml` | Migración inicial actualmente vacía |
+| `002-visitantes-vehiculos-cocheras-reservas.yaml` | Crea tablas de visitantes, vehículos, cocheras y reservas |
+
+---
+
+# `src/test/java/com/aparcar/api/`
+
+Tests existentes.
+
+| Archivo | Qué hace |
+|---|---|
+| `AparcarApiApplicationTests.java` | Comprueba que el contexto Spring pueda iniciar |
+| `component/OTPCleanupTests.java` | Tests de limpieza de OTP |
+| `component/RevokedUserCacheTests.java` | Tests del cache de JWT revocados |
 | `component/SpringEmailSenderTests.java` | Tests del envío de emails |
-| `config/IntegrationTests.java` | Anotación reusable: levanta el contexto completo de Spring + MockMvc, perfil `test` |
-| `config/SynchronousAsyncConfig.java` | Para tests: hace que las tareas `@Async` corran sincrónicamente (más fácil de testear) |
-| `config/UnitTests.java` | Anotación reusable: habilita Mockito, perfil `test` (sin levantar Spring completo) |
-| `config/WebClientTestConfig.java` | Mockea las respuestas del `WebClient` en tests |
-| `integration/AuthControllerTests.java` | Tests end-to-end de `/register`, `/login`, `/forgot-password`, `/reset-password` |
-| `integration/UserControllerTests.java` | Tests end-to-end de los endpoints de administración de usuarios |
+| `config/IntegrationTests.java` | Configuración reusable para tests de integración |
+| `config/SynchronousAsyncConfig.java` | Ejecuta tareas async de forma síncrona durante tests |
+| `config/UnitTests.java` | Configuración reusable de Mockito |
+| `config/WebClientTestConfig.java` | Configuración de WebClient para tests |
+| `integration/AuthControllerTests.java` | Tests de endpoints de autenticación |
+| `integration/UserControllerTests.java` | Tests de endpoints administrativos de usuarios |
 | `service/AuthServiceTests.java` | Tests unitarios de `AuthService` |
-| `service/CocheraServiceTests.java` 🆕 | Tests de alta de cochera y de `listarDisponibles` (filtros por fecha/tipo/compatibilidad) |
-| `service/ReservaServiceTests.java` 🆕 | Tests de las 2 reglas de negocio de reservas |
-| `service/UserServiceTests.java` | Tests unitarios de `UserService` |
-| `service/VehiculoServiceTests.java` 🆕 | Tests de alta de vehículo (patente duplicada, normalización a mayúsculas) |
-| `service/VisitanteServiceTests.java` 🆕 | Tests de alta de visitante (documento duplicado) |
+| `service/CocheraServiceTests.java` | Tests de cocheras |
+| `service/ReservaServiceTests.java` | Tests de reservas |
+| `service/UserServiceTests.java` | Tests unitarios de gestión de usuarios |
+| `service/VehiculoServiceTests.java` | Tests de vehículos |
+| `service/VisitanteServiceTests.java` | Tests de visitantes |
 
 ---
 
-## `aparcar-front/` — Frontend (Next.js)
+# `aparcar-front/` — Frontend (Next.js)
 
-### Raíz del frontend
-
-| Archivo | Qué hace |
-|---|---|
-| `.dockerignore` | Qué no copiar al buildear la imagen Docker (`node_modules`, `.next`, `.git`, `.env`) |
-| `.env` / `.env.example` | Define `NEXT_PUBLIC_API_BASE_URL` (dónde está el backend) |
-| `.gitignore` 🆕 | Ignora `node_modules/`, `.next/` (no existía, así que Git iba a trackear esas carpetas) |
-| `.pre-commit-config.yaml` | Corre el linter de Next.js antes de cada commit |
-| `Dockerfile` | Build multi-stage: compila con `npm run build` y corre la versión standalone con Node |
-| `README.md` | Punto de entrada de la documentación del front, apunta a `kickstart.md` |
-| `Taskfile.yml` | Comandos `task dev` / `task build` / `task start` / `task lint` |
-| `docker-compose.yml` | Levanta el frontend ya buildeado en un contenedor (puerto 3000) |
-| `eslint.config.mjs` | Reglas del linter (usa el preset de Next.js) |
-| `jsconfig.json` | Define el alias `@/` → raíz del proyecto (para imports tipo `@/components/...`) |
-| `kickstart.md` | Guía detallada de instalación paso a paso (prerrequisitos, `task setup`, etc.) |
-| `next.config.mjs` | Configuración de Next.js — build en modo `standalone` (para Docker) |
-| `package.json` / `package-lock.json` | Dependencias del proyecto (React, Next, react-hook-form, zod, zustand, sonner, axios) |
-| `postcss.config.mjs` | Habilita el plugin de Tailwind CSS 4 |
-
-### `app/` — páginas (routing de Next.js)
+## Raíz del frontend
 
 | Archivo | Qué hace |
 |---|---|
-| `api.jsx` | Instancia de axios compartida: agrega el JWT automáticamente a cada request, y desloguea si la API responde 401 |
-| `favicon.ico` | Ícono de la pestaña del navegador |
-| `globals.css` | Estilos globales + configuración de Tailwind |
-| `layout.js` | Layout raíz: fuentes, metadata, y el `<Toaster />` de notificaciones (sonner) |
-| `page.js` | Página de inicio (`/`) — redirige a `/admin` si ya estás logueado, si no muestra botón "Iniciar sesión" |
-| `admin/page.jsx` | Dashboard, **solo accesible para rol ADMIN** (usa `requireAuth` del lado del servidor) |
-| `admin/reservas/page.jsx` 🆕 | Crear una reserva (elige visitante → vehículo → cochera disponible) + listado de reservas |
-| `admin/visitantes/page.jsx` 🆕 | Formulario para cargar un visitante + su vehículo |
-| `login/page.jsx` | Pantalla de login (HTTP Basic → recibe el JWT en la respuesta) |
-| `recover-password/page.jsx` | Pedido de código OTP por email |
-| `reset-password/page.jsx` | Ingreso del código OTP + nueva contraseña |
-| `unauthorized/page.jsx` | Pantalla de "no tenés permiso" cuando el rol no alcanza |
-
-### `components/`
-
-| Archivo | Qué hace |
-|---|---|
-| `ProtectedRoute.jsx` | Wrapper del lado del cliente: redirige a `/login` si no hay sesión, o a `/unauthorized` si falta el rol. Lo usan `admin/visitantes` y `admin/reservas` |
-
-### `scripts/`
-
-| Archivo | Qué hace |
-|---|---|
-| `entrypoint.sh` | Se ejecuta al arrancar el contenedor Docker: vuelca las variables `NEXT_PUBLIC_*` del entorno a `public/env-config.js` (para poder cambiarlas sin rebuildear la imagen) |
-| `entrypoint_local.sh` | Misma idea pero leyendo desde el archivo `.env` en vez de variables de entorno del contenedor |
-
-### `store/`
-
-| Archivo | Qué hace |
-|---|---|
-| `authStore.js` | Estado global de sesión (Zustand): guarda el JWT en una cookie, decodifica el usuario/roles, expone `login`/`logout`/`checkAuth` |
-
-### `utils/`
-
-| Archivo | Qué hace |
-|---|---|
-| `env.js` ✏️ | Lee variables de entorno, priorizando `window.__ENV` (inyectadas en runtime por Docker) sobre las `NEXT_PUBLIC_*`. Tenía un bug: leía `process.env[key]` de forma dinámica, y Next.js solo puede inlinear esas variables cuando la referencia es literal — por eso el login pegaba a `:3000` en vez de `:8080`. Lo arreglé listando las variables una sola vez en un objeto literal (`PUBLIC_ENV`) |
-| `serverAuth.js` | Equivalente a `ProtectedRoute` pero para Server Components — `requireAuth(roles)`, usado en `admin/page.jsx` |
+| `.dockerignore` | Archivos que no se copian al construir la imagen |
+| `.env` / `.env.example` | Configura `NEXT_PUBLIC_API_BASE_URL` |
+| `.gitignore` | Ignora `node_modules/`, `.next/` y otros generados |
+| `.pre-commit-config.yaml` | Ejecuta validaciones antes de commits |
+| `Dockerfile` | Construcción y ejecución del frontend con Docker |
+| `README.md` | Documentación del frontend |
+| `Taskfile.yml` | Comandos de desarrollo/build |
+| `docker-compose.yml` | Levanta el frontend en el puerto 3000 |
+| `eslint.config.mjs` | Configuración ESLint |
+| `jsconfig.json` | Define alias `@/` |
+| `kickstart.md` | Guía de instalación |
+| `next.config.mjs` | Configuración de Next.js |
+| `package.json` / `package-lock.json` | Dependencias |
+| `postcss.config.mjs` | Configuración Tailwind CSS 4 |
 
 ---
 
-## Tablas que existen hoy en la base de datos
+# `app/` — páginas y contenido
 
-Esto es lo que hay **ahora mismo** en tu Postgres local (`docker exec aparcar-api-back-db-1 psql -U admin -d aparcar_db -c "\dt"`), no lo que dicen los YAML de Liquibase — importa la diferencia porque, como se explica abajo, algunas tablas no vienen de una migración.
+| Archivo / carpeta | Qué hace |
+|---|---|
+| `api.jsx` | Instancia Axios compartida; configura base URL e inyecta JWT en requests autenticados |
+| `favicon.ico` | Ícono de la aplicación |
+| `globals.css` | Estilos globales y Tailwind |
+| `layout.js` | Layout global y `<Toaster />` de Sonner |
+| `page.js` | Página inicial con acceso al login |
+| `login/page.jsx` ✏️ | Login del personal interno; genera sesión y redirige según rol a `dashboard-admin` o `dashboard-user` |
+| `recover-password/page.jsx` | Solicitud de OTP |
+| `reset-password/page.jsx` | Cambio de contraseña mediante OTP |
+| `unauthorized/page.jsx` | Página mostrada cuando el usuario no tiene permisos |
 
-| Tabla | Origen | Columnas | De qué entidad sale |
+---
+
+## `app/dashboard-admin/`
+
+Sección para usuarios con rol `ADMIN`.
+
+| Archivo | Qué hace |
+|---|---|
+| `page.jsx` 🆕 | Entrada del dashboard ADMIN, protegida con `requireAuth(["ADMIN"])` |
+| `VisitantesContent.jsx` 🆕 | Contenido de visitantes reutilizado dentro del dashboard administrativo |
+
+### `app/dashboard-admin/usuarios/`
+
+Módulo de gestión de usuarios internos.
+
+| Archivo | Qué hace |
+|---|---|
+| `page.jsx` 🆕 | Ruta `/dashboard-admin/usuarios`; valida server-side que el usuario tenga authority `ADMIN` |
+| `UserManagement.jsx` 🆕 | Interfaz interactiva para listar, crear, editar, asignar roles, activar y eliminar usuarios |
+
+`UserManagement.jsx` reutiliza:
+
+- `app/api.jsx` para todas las llamadas HTTP;
+- `react-hook-form` para formularios;
+- `zod` para validaciones;
+- `sonner` para notificaciones;
+- los endpoints ya existentes de activación y eliminación;
+- los nuevos endpoints de listado y edición.
+
+No implementa lógica propia de autenticación ni acceso directo a PostgreSQL.
+
+---
+
+## `app/dashboard-user/`
+
+Sección destinada a usuarios internos con rol `USER`.
+
+| Archivo | Qué hace |
+|---|---|
+| `page.jsx` 🆕 | Entrada del dashboard USER, protegida con `requireAuth(["USER"])` |
+| `ReservasContent.jsx` 🆕 | Contenido relacionado con reservas |
+
+---
+
+## `public/`
+
+| Archivo | Qué hace |
+|---|---|
+| `Logo.jpeg` 🆕 | Logo de AparcAR utilizado actualmente en la pantalla de login |
+
+---
+
+# `components/`
+
+| Archivo | Qué hace |
+|---|---|
+| `ProtectedRoute.jsx` | Wrapper client-side para proteger rutas según autenticación/rol |
+
+Las pantallas nuevas basadas en Server Components utilizan preferentemente `requireAuth()` desde `utils/serverAuth.js`.
+
+---
+
+# `scripts/`
+
+| Archivo | Qué hace |
+|---|---|
+| `entrypoint.sh` | Inyecta variables `NEXT_PUBLIC_*` cuando el frontend corre en Docker |
+| `entrypoint_local.sh` | Variante para desarrollo local |
+
+---
+
+# `store/`
+
+| Archivo | Qué hace |
+|---|---|
+| `authStore.js` | Estado global de autenticación con Zustand; guarda JWT y expone funciones de sesión |
+
+---
+
+# `utils/`
+
+| Archivo | Qué hace |
+|---|---|
+| `env.js` | Resuelve variables públicas tanto en desarrollo como en Docker |
+| `serverAuth.js` | Protección server-side mediante `requireAuth(allowedRoles)` |
+
+Ejemplo:
+
+```javascript
+await requireAuth(["ADMIN"]);
+```
+
+Si el JWT no existe, redirige al login. Si existe pero no contiene alguno de los roles requeridos, redirige a `/unauthorized`.
+
+---
+
+# Flujo de autenticación actual
+
+## Login
+
+```text
+/login
+   ↓
+HTTP Basic Auth
+   ↓
+Backend Spring Security
+   ↓
+JWT con email + authorities
+   ↓
+Frontend guarda JWT
+   ↓
+   ├── ADMIN → /dashboard-admin
+   └── USER  → /dashboard-user
+```
+
+---
+
+## Gestión de usuarios ADMIN
+
+```text
+/dashboard-admin/usuarios
+          ↓
+requireAuth(["ADMIN"])
+          ↓
+UserManagement.jsx
+          ↓
+app/api.jsx
+          ↓
+Spring Boot API
+          ↓
+PostgreSQL
+```
+
+Funciones disponibles:
+
+```text
+Listar usuarios
+Crear usuario
+Editar nombre
+Editar teléfono
+Editar authorities
+Activar usuario
+Eliminar usuario
+```
+
+Los usuarios nuevos se crean inicialmente como:
+
+```text
+USER
+INACTIVO
+```
+
+y luego pueden ser gestionados por un administrador.
+
+---
+
+# Tablas que existen actualmente en PostgreSQL
+
+| Tabla | Origen | Columnas principales | Entidad |
 |---|---|---|---|
-| `visitantes` | Liquibase (`002-...yaml`) | `id` (uuid, PK), `nombre`, `documento`, `telefono`, `email` | `Visitante.java` |
-| `vehiculos` | Liquibase (`002-...yaml`) | `id` (uuid, PK), `patente`, `tipo`, `visitante_id` (FK → visitantes) | `Vehiculo.java` |
-| `cocheras` | Liquibase (`002-...yaml`) | `id` (uuid, PK), `numero`, `sector`, `tipo`, `estado` | `Cochera.java` |
-| `reservas` | Liquibase (`002-...yaml`) | `id` (uuid, PK), `fecha`, `visitante_id` (FK), `vehiculo_id` (FK), `cochera_id` (FK), `estado`, `fecha_creacion` | `Reserva.java` |
-| `app_users` | **Hibernate** (`ddl-auto: update`), sin migración | `id` (uuid, PK), `nombre`, `email`, `password`, `telefono`, `is_active` | `AppUser.java` |
-| `app_user_authorities` | **Hibernate** (`ddl-auto: update`), sin migración | `user_id` (uuid, FK → app_users), `authority` | El campo `authorities` de `AppUser.java` (ver más abajo) |
-| `otp_codes` | **Hibernate** (`ddl-auto: update`), sin migración | `id` (bigint, PK), `token`, `user_id` (FK → app_users), `expires_at`, `used` | `OneTimePassword.java` |
-| `databasechangelog` / `databasechangeloglock` | Liquibase | — | No son datos de la app: es el registro interno de Liquibase (qué migraciones ya corrieron, y un lock para que no corran dos a la vez) |
+| `visitantes` | Liquibase | `id`, `nombre`, `documento`, `telefono`, `email` | `Visitante.java` |
+| `vehiculos` | Liquibase | `id`, `patente`, `tipo`, `visitante_id` | `Vehiculo.java` |
+| `cocheras` | Liquibase | `id`, `numero`, `sector`, `tipo`, `estado` | `Cochera.java` |
+| `reservas` | Liquibase | `id`, `fecha`, `visitante_id`, `vehiculo_id`, `cochera_id`, `estado`, `fecha_creacion` | `Reserva.java` |
+| `app_users` | Hibernate (`ddl-auto: update`) | `id`, `nombre`, `email`, `password`, `telefono`, `is_active` | `AppUser.java` |
+| `app_user_authorities` | Hibernate (`ddl-auto: update`) | `user_id`, `authority` | `AppUser.authorities` |
+| `otp_codes` | Hibernate (`ddl-auto: update`) | `id`, `token`, `user_id`, `expires_at`, `used` | `OneTimePassword.java` |
+| `databasechangelog` / `databasechangeloglock` | Liquibase | Internas de Liquibase | — |
 
 ---
 
-## Sobre `db/changelog/001-initial-schema.yaml` y el "migrate"
+# Sobre `db/changelog/001-initial-schema.yaml`
 
-Este archivo está **vacío** desde el `Initial commit`. Es la migración que debería haber creado las tablas de autenticación (`app_users`, `otp_codes`, etc.) y nunca se completó — no tiene que ver con mi sprint, ya estaba así. Por eso tuve que agregar `ddl-auto: update` en `application-dev.yml`: para que Hibernate cree esas tablas solo en desarrollo, mientras nadie escriba la migración real con `task migrate`.
+La migración `001-initial-schema.yaml` continúa vacía.
 
-Si en algún momento quieren dejarlo prolijo (no es urgente), el flujo sería: alguien con Go instalado corre `task migrate name=initial-auth-schema` contra una base ya poblada por Hibernate, eso genera el YAML con el estado real de esas tablas, y recién ahí se podría sacar el `ddl-auto: update` y volver todo a `validate` también en dev.
+Actualmente las tablas relacionadas con autenticación:
+
+```text
+app_users
+app_user_authorities
+otp_codes
+```
+
+se crean/actualizan automáticamente en desarrollo mediante:
+
+```yaml
+spring:
+  jpa:
+    hibernate:
+      ddl-auto: update
+```
+
+configurado en `application-dev.yml`.
+
+Las entidades de autenticación todavía no cuentan con una migración Liquibase propia.
+
+En el futuro, si el equipo decide unificar todo el esquema bajo Liquibase, se deberá generar una migración correspondiente antes de retirar `ddl-auto: update`.
