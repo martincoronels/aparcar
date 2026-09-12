@@ -7,6 +7,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -31,6 +32,19 @@ public class VisitanteController {
     @GetMapping
     public ResponseEntity<List<VisitanteResponseDto>> listar() {
         return ResponseEntity.ok(visitanteService.listar());
+    }
+
+    // Va antes de /{id} para que "me" no se intente parsear como UUID.
+    @GetMapping("/me")
+    public ResponseEntity<VisitanteResponseDto> obtenerPropio(Authentication authentication) {
+        return ResponseEntity.ok(visitanteService.obtenerPropio(authentication.getName()));
+    }
+
+    @PostMapping("/me")
+    public ResponseEntity<VisitanteResponseDto> crearPropio(
+            @Valid @RequestBody VisitanteRequestDto dto, Authentication authentication) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(visitanteService.crearPropio(authentication.getName(), dto));
     }
 
     @GetMapping("/{id}")

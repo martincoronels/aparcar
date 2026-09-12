@@ -8,7 +8,7 @@ export default async function DashboardAdminPage() {
   await requireAuth(["ADMIN"]);
 
   return (
-    <div className="min-h-screen bg-zinc-950 px-4 py-12 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-white px-4 py-12 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-5xl space-y-12">
         <EstadoCocherasGrid />
         <VisitantesContent />

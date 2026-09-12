@@ -1,0 +1,18 @@
+databaseChangeLog:
+  - changeSet:
+      id: 003-visitante-app-user
+      author: claude
+      comment: >
+        Vincula un visitante a su cuenta de login (AppUser), para que el
+        visitante pueda cargar sus propios datos y vehiculos.
+      changes:
+        - addColumn:
+            tableName: visitantes
+            columns:
+              - column:
+                  name: app_user_id
+                  type: uuid
+                  constraints:
+                    unique: true
+                    foreignKeyName: fk_visitante_app_user
+                    references: app_users(id)

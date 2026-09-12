@@ -22,4 +22,17 @@ public interface IVisitanteService {
     VisitanteResponseDto obtenerPorId(UUID id);
 
     List<VisitanteResponseDto> listar();
+
+    /**
+     * @throws NotFoundException Si la cuenta autenticada todavia no cargo sus datos de visitante.
+     */
+    VisitanteResponseDto obtenerPropio(String email);
+
+    /**
+     * Crea el perfil de visitante del usuario autenticado, vinculado a su cuenta.
+     *
+     * @throws ValidationException Si la cuenta ya tiene un visitante cargado, o si ya existe un
+     *                              visitante con el mismo documento.
+     */
+    VisitanteResponseDto crearPropio(String email, VisitanteRequestDto dto);
 }

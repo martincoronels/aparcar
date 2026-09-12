@@ -42,20 +42,20 @@ export default function RecoverPasswordPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-950 px-4 py-12 sm:px-6 lg:px-8">
-      <div className="w-full max-w-md space-y-8 rounded-2xl bg-zinc-900 p-8 shadow-xl shadow-black/50 ring-1 ring-zinc-800">
+    <div className="flex min-h-screen items-center justify-center bg-white px-4 py-12 sm:px-6 lg:px-8">
+      <div className="w-full max-w-md space-y-8 rounded-2xl bg-white p-8 shadow-xl shadow-[#002147]/10 ring-1 ring-[#002147]/15">
         <div>
-          <h2 className="mt-6 text-center text-3xl font-extrabold tracking-tight text-white">
+          <h2 className="mt-6 text-center text-3xl font-extrabold tracking-tight text-[#002147]">
             Recuperar contraseña
           </h2>
-          <p className="mt-2 text-center text-sm text-zinc-400">
+          <p className="mt-2 text-center text-sm text-[#002147]/60">
             Ingresa tu correo para recibir las instrucciones
           </p>
         </div>
 
         {success ? (
-          <div className="rounded-lg bg-emerald-900/30 p-4 border border-emerald-500/50">
-            <p className="text-sm text-emerald-400 text-center">
+          <div className="rounded-lg bg-[#0cb7f2]/10 p-4 border border-[#0cb7f2]/50">
+            <p className="text-sm text-[#0cb7f2] text-center">
               Si el correo existe, vas a recibir un código para restablecer tu contraseña. Te redirigimos...
             </p>
           </div>
@@ -71,7 +71,7 @@ export default function RecoverPasswordPage() {
                   type="email"
                   autoComplete="email"
                   {...register("email")}
-                  className="relative block w-full rounded-xl border-0 py-3 px-4 text-white bg-zinc-800 ring-1 ring-inset ring-zinc-700 placeholder:text-zinc-400 focus:z-10 focus:ring-2 focus:ring-inset focus:ring-emerald-500 sm:text-sm sm:leading-6 transition-all"
+                  className="relative block w-full rounded-xl border-0 py-3 px-4 text-[#002147] bg-white ring-1 ring-inset ring-[#002147]/20 placeholder:text-[#002147]/40 focus:z-10 focus:ring-2 focus:ring-inset focus:ring-[#0cb7f2] sm:text-sm sm:leading-6 transition-all"
                   placeholder="Correo electrónico"
                 />
                 {errors.email && <p className="mt-1 text-sm text-red-500">{errors.email.message}</p>}
@@ -82,18 +82,18 @@ export default function RecoverPasswordPage() {
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="group relative flex w-full justify-center rounded-xl bg-emerald-600 px-3 py-3 text-sm font-semibold text-white hover:bg-emerald-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                className="group relative flex w-full justify-center rounded-xl bg-[#0cb7f2] px-3 py-3 text-sm font-semibold text-white hover:bg-[#002147] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0cb7f2] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isSubmitting ? "Enviando..." : "Enviar enlace"}
               </button>
             </div>
           </form>
         )}
-        
+
         <div className="text-center mt-4 text-sm">
           <Link
             href="/login"
-            className="font-medium text-emerald-500 hover:text-emerald-400 transition-colors"
+            className="font-medium text-[#0cb7f2] hover:text-[#002147] transition-colors"
           >
             Volver al inicio de sesión
           </Link>

@@ -4,9 +4,14 @@ import com.aparcar.api.entity.reserva.Visitante;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
+import java.util.Optional;
 import java.util.UUID;
 
 @Repository
 public interface VisitanteRepository extends JpaRepository<Visitante, UUID> {
     boolean existsByDocumento(String documento);
+
+    Optional<Visitante> findByAppUser_Email(String email);
+
+    boolean existsByAppUser_Email(String email);
 }

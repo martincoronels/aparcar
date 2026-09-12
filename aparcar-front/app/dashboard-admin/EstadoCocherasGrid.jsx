@@ -112,40 +112,40 @@ export default function EstadoCocherasGrid() {
     .filter((columna) => columna.cocheras.length > 0);
 
   return (
-    <div className="rounded-2xl bg-zinc-900 p-6 shadow-xl shadow-black/50 ring-1 ring-zinc-800">
+    <div className="rounded-2xl bg-white p-6 shadow-xl shadow-[#002147]/10 ring-1 ring-[#002147]/15">
       <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h2 className="text-xl font-bold text-white">Estado de las cocheras</h2>
-          <p className="mt-1 text-sm text-zinc-400">Ocupación de hoy, agrupada por tipo.</p>
+          <h2 className="text-xl font-bold text-[#002147]">Estado de las cocheras</h2>
+          <p className="mt-1 text-sm text-[#002147]/60">Ocupación de hoy, agrupada por tipo.</p>
         </div>
 
-        <div className="flex items-center gap-4 text-xs text-zinc-400">
+        <div className="flex items-center gap-4 text-xs text-[#002147]/60">
           <span className="flex items-center gap-1.5">
-            <span className="h-3 w-3 rounded-sm border border-zinc-600 bg-zinc-950" /> Libre
+            <span className="h-3 w-3 rounded-sm border border-[#002147]/30 bg-white" /> Libre
           </span>
           <span className="flex items-center gap-1.5">
-            <span className="h-3 w-3 rounded-sm bg-emerald-500" /> Ocupada
+            <span className="h-3 w-3 rounded-sm bg-[#0cb7f2]" /> Ocupada
           </span>
           <span className="flex items-center gap-1.5">
-            <span className="h-3 w-3 rounded-sm bg-zinc-700" /> Deshabilitada
+            <span className="h-3 w-3 rounded-sm bg-[#002147]/20" /> Deshabilitada
           </span>
         </div>
       </div>
 
       {loading ? (
-        <div className="p-8 text-center text-sm text-zinc-400">Cargando cocheras...</div>
+        <div className="p-8 text-center text-sm text-[#002147]/60">Cargando cocheras...</div>
       ) : columnas.length === 0 ? (
-        <div className="p-8 text-center text-sm text-zinc-400">Todavía no hay cocheras cargadas.</div>
+        <div className="p-8 text-center text-sm text-[#002147]/60">Todavía no hay cocheras cargadas.</div>
       ) : (
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-3">
           {columnas.map(({ tipo, label, Icon, cocheras: cocherasTipo }) => {
             const ocupadasCount = cocherasTipo.filter((c) => ocupadasIds.has(c.id)).length;
 
             return (
-              <div key={tipo} className="rounded-xl bg-zinc-950 p-4 ring-1 ring-zinc-800">
+              <div key={tipo} className="rounded-xl bg-[#002147]/5 p-4 ring-1 ring-[#002147]/10">
                 <div className="mb-3 flex items-center justify-between">
-                  <h3 className="text-sm font-semibold text-zinc-200">{label}</h3>
-                  <span className="text-xs text-zinc-500">
+                  <h3 className="text-sm font-semibold text-[#002147]">{label}</h3>
+                  <span className="text-xs text-[#002147]/50">
                     {ocupadasCount}/{cocherasTipo.length} ocupadas
                   </span>
                 </div>
@@ -164,20 +164,20 @@ export default function EstadoCocherasGrid() {
                         className={
                           "flex h-12 w-12 items-center justify-center rounded-md border transition-colors " +
                           (deshabilitada
-                            ? "border-zinc-700 bg-zinc-700/60"
+                            ? "border-[#002147]/15 bg-[#002147]/10"
                             : ocupada
-                            ? "border-emerald-400 bg-emerald-500"
-                            : "border-zinc-600 bg-zinc-950")
+                            ? "border-[#0cb7f2] bg-[#0cb7f2]"
+                            : "border-[#002147]/25 bg-white")
                         }
                       >
                         <Icon
                           className={
                             "h-6 w-6 " +
                             (deshabilitada
-                              ? "text-zinc-400"
+                              ? "text-[#002147]/30"
                               : ocupada
-                              ? "text-zinc-950"
-                              : "text-zinc-500")
+                              ? "text-white"
+                              : "text-[#002147]/50")
                           }
                         />
                       </div>

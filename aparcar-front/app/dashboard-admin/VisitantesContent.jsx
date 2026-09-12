@@ -23,8 +23,8 @@ const visitanteSchema = z.object({
 });
 
 const inputClasses =
-  "block w-full rounded-xl border-0 py-3 px-4 text-white bg-zinc-800 ring-1 ring-inset ring-zinc-700 placeholder:text-zinc-400 focus:z-10 focus:ring-2 focus:ring-inset focus:ring-emerald-500 sm:text-sm sm:leading-6 transition-all";
-const labelClasses = "block text-sm font-medium text-zinc-300 mb-1";
+  "block w-full rounded-xl border-0 py-3 px-4 text-[#002147] bg-white ring-1 ring-inset ring-[#002147]/20 placeholder:text-[#002147]/40 focus:z-10 focus:ring-2 focus:ring-inset focus:ring-[#0cb7f2] sm:text-sm sm:leading-6 transition-all";
+const labelClasses = "block text-sm font-medium text-[#002147]/70 mb-1";
 
 export default function VisitantesContent() {
   const {
@@ -63,17 +63,17 @@ export default function VisitantesContent() {
 
   return (
     <div className="mx-auto max-w-2xl">
-      <h1 className="text-3xl font-extrabold tracking-tight text-white mb-2">
+      <h1 className="text-3xl font-extrabold tracking-tight text-[#002147] mb-2">
         Nuevo visitante
       </h1>
-      <p className="text-sm text-zinc-400 mb-8">
+      <p className="text-sm text-[#002147]/60 mb-8">
         Cargá los datos del visitante junto con su vehículo.
       </p>
 
-      <div className="rounded-2xl bg-zinc-900 p-8 shadow-xl shadow-black/50 ring-1 ring-zinc-800">
+      <div className="rounded-2xl bg-white p-8 shadow-xl shadow-[#002147]/10 ring-1 ring-[#002147]/15">
         <form className="space-y-6" onSubmit={handleSubmit(onSubmit)}>
             <div>
-              <h2 className="text-sm font-semibold text-emerald-500 uppercase tracking-wide mb-4">
+              <h2 className="text-sm font-semibold text-[#0cb7f2] uppercase tracking-wide mb-4">
                 Datos del visitante
               </h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -100,7 +100,7 @@ export default function VisitantesContent() {
             </div>
 
             <div>
-              <h2 className="text-sm font-semibold text-emerald-500 uppercase tracking-wide mb-4">
+              <h2 className="text-sm font-semibold text-[#0cb7f2] uppercase tracking-wide mb-4">
                 Vehículo
               </h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -130,7 +130,7 @@ export default function VisitantesContent() {
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="group relative flex w-full justify-center rounded-xl bg-emerald-600 px-3 py-3 text-sm font-semibold text-white hover:bg-emerald-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-emerald-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                className="group relative flex w-full justify-center rounded-xl bg-[#0cb7f2] px-3 py-3 text-sm font-semibold text-white hover:bg-[#002147] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0cb7f2] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isSubmitting ? "Guardando..." : "Guardar visitante"}
               </button>
