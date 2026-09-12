@@ -7,12 +7,13 @@ import org.springframework.stereotype.Repository;
 
 import java.util.Optional;
 import java.util.Set;
+import java.util.UUID;
 
 /**
  * Repository interface for {@link AppUser} entities.
  */
 @Repository
-public interface AppUserRepository extends JpaRepository<AppUser, Long> {
+public interface AppUserRepository extends JpaRepository<AppUser, UUID> {
     Optional<AppUser> findByEmail(String email);
 
     Boolean existsByEmail(String email);
