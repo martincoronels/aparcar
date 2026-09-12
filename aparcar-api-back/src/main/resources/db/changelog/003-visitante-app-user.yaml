@@ -5,6 +5,11 @@ databaseChangeLog:
       comment: >
         Vincula un visitante a su cuenta de login (AppUser), para que el
         visitante pueda cargar sus propios datos y vehiculos.
+        Sin foreign key física a proposito: app_users no lo crea Liquibase
+        (lo crea Hibernate con ddl-auto: update, que corre despues), asi que
+        una FK acá rompe en cualquier base nueva (tests, clon de otra
+        persona) donde app_users todavia no existe cuando corre este
+        changeset. La relacion la valida JPA (@OneToOne en Visitante).
       changes:
         - addColumn:
             tableName: visitantes
@@ -14,5 +19,3 @@ databaseChangeLog:
                   type: uuid
                   constraints:
                     unique: true
-                    foreignKeyName: fk_visitante_app_user
-                    references: app_users(id)

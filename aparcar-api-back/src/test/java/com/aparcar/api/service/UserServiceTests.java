@@ -3,9 +3,11 @@ package com.aparcar.api.service;
 import com.aparcar.api.component.IRevokedUserCache;
 import com.aparcar.api.config.UnitTests;
 import com.aparcar.api.entity.auth.AppUser;
+import com.aparcar.api.entity.reserva.Visitante;
 import com.aparcar.api.exception.NotFoundException;
 import com.aparcar.api.exception.ValidationException;
 import com.aparcar.api.repository.AppUserRepository;
+import com.aparcar.api.repository.VisitanteRepository;
 import com.aparcar.api.service.impl.UserService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -27,6 +29,9 @@ public class UserServiceTests {
 
     @Mock
     private IRevokedUserCache revokedUserCache;
+
+    @Mock
+    private VisitanteRepository visitanteRepository;
 
     @InjectMocks
     private UserService usersService;
@@ -119,6 +124,47 @@ public class UserServiceTests {
 
         // Assert
         verify(revokedUserCache).revoke(testEmail);
+        verify(appUserRepository).delete(user);
+    }
+
+    @Test
+    @DisplayName("deleteUser desvincula el visitante propio antes de borrar la cuenta, para no violar la FK")
+    void deleteUserUnlinksOwnVisitanteBeforeDeleting() {
+        // Arrange: la cuenta tiene un visitante propio (login self-service) vinculado.
+        var user = new AppUser();
+        user.setEmail(testEmail);
+
+        var visitante = new Visitante();
+        visitante.setAppUser(user);
+
+        when(appUserRepository.findByEmail(testEmail)).thenReturn(Optional.of(user));
+        when(visitanteRepository.findByAppUser_Email(testEmail)).thenReturn(Optional.of(visitante));
+        when(visitanteRepository.save(visitante)).thenReturn(visitante);
+
+        // Act
+        usersService.deleteUser(testEmail, "caller@email.com");
+
+        // Assert: el visitante queda desvinculado (y guardado) antes del delete del usuario.
+        assertNull(visitante.getAppUser());
+        verify(visitanteRepository).save(visitante);
+        verify(appUserRepository).delete(user);
+    }
+
+    @Test
+    @DisplayName("deleteUser no toca visitantes cuando la cuenta no tiene ninguno vinculado")
+    void deleteUserDoesNothingToVisitantesWhenNoneLinked() {
+        // Arrange
+        var user = new AppUser();
+        user.setEmail(testEmail);
+
+        when(appUserRepository.findByEmail(testEmail)).thenReturn(Optional.of(user));
+        when(visitanteRepository.findByAppUser_Email(testEmail)).thenReturn(Optional.empty());
+
+        // Act
+        usersService.deleteUser(testEmail, "caller@email.com");
+
+        // Assert
+        verify(visitanteRepository, never()).save(any());
         verify(appUserRepository).delete(user);
     }
 }

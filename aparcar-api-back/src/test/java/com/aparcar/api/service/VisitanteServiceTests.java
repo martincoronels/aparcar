@@ -2,9 +2,11 @@ package com.aparcar.api.service;
 
 import com.aparcar.api.config.UnitTests;
 import com.aparcar.api.dto.reserva.VisitanteRequestDto;
+import com.aparcar.api.entity.auth.AppUser;
 import com.aparcar.api.entity.reserva.Visitante;
 import com.aparcar.api.exception.NotFoundException;
 import com.aparcar.api.exception.ValidationException;
+import com.aparcar.api.repository.AppUserRepository;
 import com.aparcar.api.repository.VisitanteRepository;
 import com.aparcar.api.service.impl.VisitanteService;
 import org.junit.jupiter.api.BeforeEach;
@@ -27,6 +29,9 @@ public class VisitanteServiceTests {
 
     @Mock
     private VisitanteRepository visitanteRepository;
+
+    @Mock
+    private AppUserRepository appUserRepository;
 
     @InjectMocks
     private VisitanteService visitanteService;
@@ -99,5 +104,64 @@ public class VisitanteServiceTests {
         var response = visitanteService.listar();
 
         assertEquals(1, response.size());
+    }
+
+    @Test
+    @DisplayName("obtenerPropio lanza NotFoundException si la cuenta no tiene un visitante vinculado")
+    void obtenerPropioLanzaNotFoundExceptionSiNoTienePerfil() {
+        when(visitanteRepository.findByAppUser_Email("visitante@test.com")).thenReturn(Optional.empty());
+
+        assertThrows(NotFoundException.class, () -> visitanteService.obtenerPropio("visitante@test.com"));
+    }
+
+    @Test
+    @DisplayName("obtenerPropio devuelve el visitante vinculado a la cuenta autenticada")
+    void obtenerPropioDevuelveElVisitanteVinculado() {
+        Visitante visitante = new Visitante();
+        visitante.setId(UUID.randomUUID());
+        visitante.setNombre("Juan Perez");
+        when(visitanteRepository.findByAppUser_Email("visitante@test.com")).thenReturn(Optional.of(visitante));
+
+        var response = visitanteService.obtenerPropio("visitante@test.com");
+
+        assertEquals("Juan Perez", response.nombre());
+    }
+
+    @Test
+    @DisplayName("crearPropio lanza ValidationException si la cuenta ya tiene un visitante cargado")
+    void crearPropioLanzaValidationExceptionSiLaCuentaYaTieneVisitante() {
+        when(visitanteRepository.existsByAppUser_Email("visitante@test.com")).thenReturn(true);
+
+        assertThrows(ValidationException.class, () -> visitanteService.crearPropio("visitante@test.com", dto));
+    }
+
+    @Test
+    @DisplayName("crearPropio lanza ValidationException si el documento ya esta en uso por otro visitante")
+    void crearPropioLanzaValidationExceptionSiDocumentoYaEstaEnUso() {
+        when(visitanteRepository.existsByAppUser_Email("visitante@test.com")).thenReturn(false);
+        when(visitanteRepository.existsByDocumento(dto.getDocumento())).thenReturn(true);
+
+        assertThrows(ValidationException.class, () -> visitanteService.crearPropio("visitante@test.com", dto));
+    }
+
+    @Test
+    @DisplayName("crearPropio crea el visitante vinculado a la cuenta autenticada")
+    void crearPropioCreaElVisitanteVinculadoALaCuenta() {
+        AppUser appUser = new AppUser();
+        appUser.setId(UUID.randomUUID());
+        appUser.setEmail("visitante@test.com");
+
+        when(visitanteRepository.existsByAppUser_Email("visitante@test.com")).thenReturn(false);
+        when(visitanteRepository.existsByDocumento(dto.getDocumento())).thenReturn(false);
+        when(appUserRepository.findByEmail("visitante@test.com")).thenReturn(Optional.of(appUser));
+        when(visitanteRepository.save(any())).thenAnswer(i -> {
+            Visitante v = i.getArgument(0);
+            v.setId(UUID.randomUUID());
+            return v;
+        });
+
+        var response = visitanteService.crearPropio("visitante@test.com", dto);
+
+        assertEquals(dto.getNombre(), response.nombre());
     }
 }
