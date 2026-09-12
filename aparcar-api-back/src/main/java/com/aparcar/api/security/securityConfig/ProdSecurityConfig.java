@@ -127,12 +127,22 @@ public class ProdSecurityConfig {
 
                 .authorizeHttpRequests(requests -> requests
 
-                        // Solo ADMIN puede gestionar usuarios
-                        // y registrar nuevos usuarios internos.
+                        // Endpoints públicos. Van primero para que
+                        // /api/v1/cocheras/disponibles se resuelva acá y no
+                        // caiga en la regla de ADMIN de /api/v1/cocheras/** de abajo.
+                        .requestMatchers(
+                                "/api/v1/cocheras/disponibles",
+                                "/forgot-password",
+                                "/reset-password"
+                        ).permitAll()
+
+                        // Solo ADMIN puede gestionar usuarios, registrar
+                        // nuevos usuarios internos y administrar cocheras.
                         .requestMatchers(
                                 "/users/**",
                                 "/api/v1/usuarios/**",
-                                "/register"
+                                "/register",
+                                "/api/v1/cocheras/**"
                         ).hasAuthority("ADMIN")
 
                         // Cualquier usuario autenticado.
@@ -143,13 +153,6 @@ public class ProdSecurityConfig {
                                 "/login",
                                 "/actuator/health"
                         ).authenticated()
-
-                        // Endpoints públicos.
-                        .requestMatchers(
-                                "/api/v1/cocheras/disponibles",
-                                "/forgot-password",
-                                "/reset-password"
-                        ).permitAll()
 
                         .requestMatchers("/actuator/**")
                         .access((authentication, ctx) -> {
