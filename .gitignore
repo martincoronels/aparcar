@@ -19,6 +19,18 @@
 *.tar.gz
 *.rar
 
+# IntelliJ
+.idea/
+*.iml
+*.ipr
+*.iws
+
 # virtual machine crash logs, see http://www.java.com/en/download/help/error_hotspot.xml
 hs_err_pid*
 replay_pid*
+
+# Variables de entorno reales (nunca el .env real, solo el .env.example)
+.env
+
+# macOS
+.DS_Store
