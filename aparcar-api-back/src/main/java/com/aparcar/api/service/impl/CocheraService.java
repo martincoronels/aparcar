@@ -5,6 +5,7 @@ import com.aparcar.api.dto.reserva.CocheraResponseDto;
 import com.aparcar.api.entity.reserva.Cochera;
 import com.aparcar.api.entity.reserva.CocheraEstado;
 import com.aparcar.api.entity.reserva.CocheraTipo;
+import com.aparcar.api.entity.reserva.Reserva;
 import com.aparcar.api.entity.reserva.ReservaEstado;
 import com.aparcar.api.entity.reserva.VehiculoTipo;
 import com.aparcar.api.exception.NotFoundException;
@@ -66,7 +67,13 @@ public class CocheraService implements ICocheraService {
         cochera.setTipo(dto.getTipo());
         cochera.setEstado(dto.getEstado());
 
-        return toResponseDto(cocheraRepository.save(cochera));
+        Cochera guardada = cocheraRepository.save(cochera);
+
+        if (guardada.getEstado() == CocheraEstado.DESHABILITADA) {
+            cancelarReservasConfirmadas(guardada.getId());
+        }
+
+        return toResponseDto(guardada);
     }
 
     @Override
@@ -91,6 +98,12 @@ public class CocheraService implements ICocheraService {
                 .filter(cochera -> esCompatible(cochera.getTipo(), tipoVehiculo))
                 .map(this::toResponseDto)
                 .toList();
+    }
+
+    private void cancelarReservasConfirmadas(UUID cocheraId) {
+        List<Reserva> reservas = reservaRepository.findByCocheraIdAndEstado(cocheraId, ReservaEstado.CONFIRMADA);
+        reservas.forEach(reserva -> reserva.setEstado(ReservaEstado.CANCELADA));
+        reservaRepository.saveAll(reservas);
     }
 
     private Cochera buscarOLanzar(UUID id) {

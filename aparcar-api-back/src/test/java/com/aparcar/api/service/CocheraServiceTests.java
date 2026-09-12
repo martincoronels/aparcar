@@ -237,4 +237,27 @@ public class CocheraServiceTests {
         assertEquals(1, disponibles.size());
         assertTrue(disponibles.stream().anyMatch(c -> c.numero().equals("AC-01")));
     }
+
+    @Test
+    @DisplayName("editar cancela las reservas CONFIRMADA de la cochera al pasarla a DESHABILITADA")
+    void editarCancelaReservasConfirmadasAlDeshabilitar() {
+        Cochera cochera = cocheraAuto("A-01");
+        CocheraRequestDto dto = new CocheraRequestDto();
+        dto.setNumero("A-01");
+        dto.setSector("Planta Baja");
+        dto.setTipo(CocheraTipo.AUTO);
+        dto.setEstado(CocheraEstado.DESHABILITADA);
+
+        Reserva reservaConfirmada = new Reserva();
+        reservaConfirmada.setEstado(ReservaEstado.CONFIRMADA);
+
+        when(cocheraRepository.findById(cochera.getId())).thenReturn(Optional.of(cochera));
+        when(cocheraRepository.save(any())).thenAnswer(i -> i.getArgument(0));
+        when(reservaRepository.findByCocheraIdAndEstado(cochera.getId(), ReservaEstado.CONFIRMADA))
+                .thenReturn(List.of(reservaConfirmada));
+
+        cocheraService.editar(cochera.getId(), dto);
+
+        assertEquals(ReservaEstado.CANCELADA, reservaConfirmada.getEstado());
+    }
 }

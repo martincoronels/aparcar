@@ -16,4 +16,6 @@ public interface ReservaRepository extends JpaRepository<Reserva, UUID> {
     List<Reserva> findByFechaAndEstado(LocalDate fecha, ReservaEstado estado);
 
     boolean existsByCocheraId(UUID cocheraId);
+
+    List<Reserva> findByCocheraIdAndEstado(UUID cocheraId, ReservaEstado estado);
 }
