@@ -62,17 +62,16 @@ export default function VisitantesContent() {
   };
 
   return (
-    <div className="min-h-screen bg-zinc-950 px-4 py-12 sm:px-6 lg:px-8">
-      <div className="mx-auto max-w-2xl">
-        <h1 className="text-3xl font-extrabold tracking-tight text-white mb-2">
-          Nuevo visitante
-        </h1>
-        <p className="text-sm text-zinc-400 mb-8">
-          Cargá los datos del visitante junto con su vehículo.
-        </p>
+    <div className="mx-auto max-w-2xl">
+      <h1 className="text-3xl font-extrabold tracking-tight text-white mb-2">
+        Nuevo visitante
+      </h1>
+      <p className="text-sm text-zinc-400 mb-8">
+        Cargá los datos del visitante junto con su vehículo.
+      </p>
 
-        <div className="rounded-2xl bg-zinc-900 p-8 shadow-xl shadow-black/50 ring-1 ring-zinc-800">
-          <form className="space-y-6" onSubmit={handleSubmit(onSubmit)}>
+      <div className="rounded-2xl bg-zinc-900 p-8 shadow-xl shadow-black/50 ring-1 ring-zinc-800">
+        <form className="space-y-6" onSubmit={handleSubmit(onSubmit)}>
             <div>
               <h2 className="text-sm font-semibold text-emerald-500 uppercase tracking-wide mb-4">
                 Datos del visitante
@@ -136,8 +135,7 @@ export default function VisitantesContent() {
                 {isSubmitting ? "Guardando..." : "Guardar visitante"}
               </button>
             </div>
-          </form>
-        </div>
+        </form>
       </div>
     </div>
   );
