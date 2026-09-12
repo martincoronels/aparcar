@@ -13,7 +13,9 @@ import org.springframework.security.test.context.support.WithAnonymousUser;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 
+import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.is;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.security.core.context.SecurityContextHolder.getContext;
@@ -181,5 +183,56 @@ public class UserControllerTests {
 
         assertFalse(appUserRepository.existsByEmail(user.getEmail()));
         assertTrue(revokedUserCache.isRevoked(user.getEmail()));
+    }
+
+    @Test
+    @WithMockUser(authorities = "ADMIN")
+    @DisplayName("PUT /api/v1/usuarios/{id} actualiza nombre, telefono y authorities")
+    void updateUserUpdatesEditableFields() throws Exception {
+        AppUser user = new AppUser();
+        user.setNombre("Nombre Viejo");
+        user.setEmail("some@email.com");
+        user.setPassword("password");
+        user.setTelefono("111");
+        user.setAuthorities(java.util.Set.of(com.aparcar.api.entity.auth.AppAuthority.USER));
+        user.setIsActive(true);
+        appUserRepository.save(user);
+
+        var context = getContext();
+        mockMvc.perform(put("/api/v1/usuarios/" + user.getId())
+                        .with(securityContext(context))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"nombre\": \"Nombre Nuevo\", \"telefono\": \"222\", \"authorities\": [\"USER\", \"ADMIN\"]}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.nombre").value("Nombre Nuevo"))
+                .andExpect(jsonPath("$.telefono").value("222"))
+                .andExpect(jsonPath("$.authorities", containsInAnyOrder("USER", "ADMIN")));
+
+        AppUser updated = appUserRepository.findById(user.getId())
+                .orElseThrow(() -> new IllegalStateException("User not found"));
+        assertEquals("Nombre Nuevo", updated.getNombre());
+        assertEquals(2, updated.getAuthorities().size());
+    }
+
+    @Test
+    @WithMockUser(authorities = "ADMIN")
+    @DisplayName("PUT /api/v1/usuarios/{id} devuelve 404 si el usuario no existe")
+    void updateUserReturnsNotFoundForUnknownId() throws Exception {
+        var context = getContext();
+        mockMvc.perform(put("/api/v1/usuarios/" + java.util.UUID.randomUUID())
+                        .with(securityContext(context))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"nombre\": \"Nombre\", \"telefono\": \"111\", \"authorities\": [\"USER\"]}"))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    @WithAnonymousUser
+    @DisplayName("PUT /api/v1/usuarios/{id} devuelve 401 para anonimos")
+    void updateUserRejectsAnonymousUsers() throws Exception {
+        mockMvc.perform(put("/api/v1/usuarios/" + java.util.UUID.randomUUID())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"nombre\": \"Nombre\", \"telefono\": \"111\", \"authorities\": [\"USER\"]}"))
+                .andExpect(status().isUnauthorized());
     }
 }
