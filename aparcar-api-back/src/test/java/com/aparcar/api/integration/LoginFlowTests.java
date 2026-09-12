@@ -84,11 +84,9 @@ class LoginFlowTests {
             public boolean hasError(ClientHttpResponse response) {
                 return false;
             }
-
-            @Override
-            public void handleError(ClientHttpResponse response) {
-                // No-op: nunca se llama porque hasError() siempre es false.
-            }
+            // handleError() no se sobrescribe: nunca se llama porque
+            // hasError() siempre es false, y el default de la interfaz
+            // (Spring 7) alcanza sin problema.
         });
     }
 
