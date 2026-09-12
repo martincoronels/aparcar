@@ -331,7 +331,7 @@ Un administrador puede posteriormente modificar sus authorities, activarlos o el
 
 # `src/test/java/com/aparcar/api/`
 
-Tests existentes.
+Convención de esta sección: 🆕 = clase de test agregada al sumar cobertura de login/roles/dashboards. El resto ya existía.
 
 | Archivo | Qué hace |
 |---|---|
@@ -339,18 +339,31 @@ Tests existentes.
 | `component/OTPCleanupTests.java` | Tests de limpieza de OTP |
 | `component/RevokedUserCacheTests.java` | Tests del cache de JWT revocados |
 | `component/SpringEmailSenderTests.java` | Tests del envío de emails |
-| `config/IntegrationTests.java` | Configuración reusable para tests de integración |
+| `config/IntegrationTests.java` | Configuración reusable para tests de integración (MockMvc + Spring completo) |
 | `config/SynchronousAsyncConfig.java` | Ejecuta tareas async de forma síncrona durante tests |
 | `config/UnitTests.java` | Configuración reusable de Mockito |
 | `config/WebClientTestConfig.java` | Configuración de WebClient para tests |
-| `integration/AuthControllerTests.java` | Tests de endpoints de autenticación |
-| `integration/UserControllerTests.java` | Tests de endpoints administrativos de usuarios |
+| `filters/JWTGeneratorFilterTests.java` 🆕 | **Caja blanca.** Prueba el filtro que arma el JWT directamente (mocks, sin Spring): genera `Authorization: Bearer ...` con email/authorities correctos solo si hay autenticación, y solo en `/login` |
+| `filters/RateLimitFilterTests.java` 🆕 | **Caja blanca.** Prueba el limitador de intentos directamente: deja pasar las primeras 5 requests por IP y bloquea (429) la 6ta; IPs distintas tienen buckets independientes |
+| `integration/AuthControllerTests.java` ✏️ | Tests de `/register`, `/login`, `/forgot-password`, `/reset-password`. Actualicé `registerValidatesInput` y `registerCreatesInactiveUser` porque `/register` pasó a requerir rol ADMIN (antes eran públicos y quedaron rotos por ese cambio); agregué los casos 401 (anónimo) y 403 (rol USER) |
+| `integration/DashboardAccessSecurityTests.java` 🆕 | **Caja negra.** Matriz de qué rol puede pegarle a qué endpoint: `/api/v1/visitantes`, `/vehiculos` y `/reservas` exigen solo estar autenticado (los usan ambos dashboards, sin importar el rol), `/api/v1/usuarios` exige ADMIN, `/api/v1/cocheras/disponibles` es público |
+| `integration/LoginFlowTests.java` 🆕 | **Caja negra**, contra un servidor real embebido (no MockMvc — ver el porqué en el comentario de la clase). Login real con HTTP Basic: verifica el JWT devuelto (email, authorities), 401 con email inexistente, y que en dev/test cualquier contraseña autentica |
+| `integration/UserControllerTests.java` ✏️ | Tests de `/users/**` y `/api/v1/usuarios/**`. Agregué los casos de `PUT /api/v1/usuarios/{id}` (actualiza campos, 404 si no existe, 401 anónimo) |
+| `security/AppUserDetailsServiceTests.java` 🆕 | **Caja blanca.** El puente AppUser → UserDetails: mapea authorities correctamente, lanza `UsernameNotFoundException` si el email no existe |
+| `security/authenticationProvider/DevAuthenticationProviderTests.java` 🆕 | **Caja blanca.** Documenta el comportamiento a propósito "inseguro" de dev: autentica sin validar la contraseña, siempre que el email exista |
+| `security/authenticationProvider/ProdAuthenticationProviderTests.java` 🆕 | **Caja blanca.** El que sí valida contraseña (perfil prod real): rechaza con `BadCredentialsException` tanto si la contraseña no matchea como si el usuario no existe (para no filtrar cuáles emails están registrados) |
 | `service/AuthServiceTests.java` | Tests unitarios de `AuthService` |
 | `service/CocheraServiceTests.java` | Tests de cocheras |
 | `service/ReservaServiceTests.java` | Tests de reservas |
 | `service/UserServiceTests.java` | Tests unitarios de gestión de usuarios |
 | `service/VehiculoServiceTests.java` | Tests de vehículos |
 | `service/VisitanteServiceTests.java` | Tests de visitantes |
+
+## Sobre `LoginFlowTests` y el bug de `getServletPath()` en MockMvc
+
+Escribiendo estos tests encontré algo importante para quien toque `RateLimitFilter`, `JWTValidationFilter` o `JWTGeneratorFilter`: los tres deciden si aplicarse mirando `request.getServletPath()`. En el dispatch simulado de MockMvc ese valor **no coincide** con el de un despliegue real (queda vacío), así que esos filtros nunca se activan bajo MockMvc — silencioso, sin error, simplemente no hacen nada. Por eso `LoginFlowTests` corre contra un servidor embebido real (`@SpringBootTest(webEnvironment = RANDOM_PORT)` + `RestTemplate`) en vez de `MockMvc`: es la única forma de que estos tres filtros se ejecuten de verdad durante el test.
+
+No es un bug de producción — contra la app real (Docker) ya confirmamos a mano que el JWT y el rate limiting funcionan bien — es una limitación del entorno de test que vale la pena tener en cuenta antes de confiar en un test de estos tres filtros hecho con MockMvc.
 
 ---
 

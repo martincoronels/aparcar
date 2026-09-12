@@ -66,10 +66,12 @@ public class AuthControllerTests {
     }
 
     @Test
-    @WithAnonymousUser
+    @WithMockUser(authorities = "ADMIN")
     @DisplayName("/register validates input")
     void registerValidatesInput() throws Exception {
+        var context = getContext();
         mockMvc.perform(post("/register")
+                        .with(securityContext(context))
                         .contentType(MediaType.APPLICATION_JSON_VALUE)
                         .content("{ \"nombre\": \"Test User\", \"email\": \"<script>alert(\\\"hacked\\\")</script>\", \"password\": \"123\" }"))
                 .andExpect(status().isBadRequest())
@@ -82,9 +84,33 @@ public class AuthControllerTests {
 
     @Test
     @WithAnonymousUser
+    @DisplayName("/register returns 401 Unauthorized for anonymous users")
+    void registerReturnsUnauthorizedForAnonymousUsers() throws Exception {
+        mockMvc.perform(post("/register")
+                        .contentType(MediaType.APPLICATION_JSON_VALUE)
+                        .content("{ \"nombre\": \"Some Name\", \"email\": \"some@email.com\", \"password\": \"12345678\" }"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @WithMockUser(roles = "USER")
+    @DisplayName("/register returns 403 Forbidden for non-ADMIN users")
+    void registerReturnsForbiddenForRegularUsers() throws Exception {
+        var context = getContext();
+        mockMvc.perform(post("/register")
+                        .with(securityContext(context))
+                        .contentType(MediaType.APPLICATION_JSON_VALUE)
+                        .content("{ \"nombre\": \"Some Name\", \"email\": \"some@email.com\", \"password\": \"12345678\" }"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @WithMockUser(authorities = "ADMIN")
     @DisplayName("/register creates inactive user")
     void registerCreatesInactiveUser() throws Exception {
+        var context = getContext();
         mockMvc.perform(post("/register")
+                        .with(securityContext(context))
                         .contentType(MediaType.APPLICATION_JSON_VALUE)
                         .content("{ \"nombre\": \"Some Name\", \"email\": \"some@email.com\", \"password\": \"12345678\" }"))
                 .andExpect(status().isCreated())
