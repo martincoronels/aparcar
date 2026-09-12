@@ -46,11 +46,11 @@ Cada una tiene su propio README con detalles técnicos específicos, pero la gu�
 
 Proyecto desarrollado para **UCAio**, la software factory de la UCA — cátedra de Proyecto Integral de Desarrollo.
 
-| Integrante | A cargo de |
+| Integrante | Rol |
 |---|---|
-| Devoto | ABM de Cocheras |
-| Coronel | Login y ABM de Usuarios |
-| Denti | Visitantes, Vehículos, Reservas y Base de Datos |
+| Devoto | Burning Vibe Coder |
+| Coronel | Dev Slayer |
+| Denti | SCRUM Master Pro Max |
 
 ---
 

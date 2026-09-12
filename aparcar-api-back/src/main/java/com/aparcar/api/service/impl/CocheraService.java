@@ -7,6 +7,7 @@ import com.aparcar.api.entity.reserva.CocheraEstado;
 import com.aparcar.api.entity.reserva.CocheraTipo;
 import com.aparcar.api.entity.reserva.ReservaEstado;
 import com.aparcar.api.entity.reserva.VehiculoTipo;
+import com.aparcar.api.exception.NotFoundException;
 import com.aparcar.api.exception.ValidationException;
 import com.aparcar.api.repository.CocheraRepository;
 import com.aparcar.api.repository.ReservaRepository;
@@ -47,6 +48,39 @@ public class CocheraService implements ICocheraService {
     }
 
     @Override
+    public CocheraResponseDto obtenerPorId(UUID id) {
+        return toResponseDto(buscarOLanzar(id));
+    }
+
+    @Override
+    public CocheraResponseDto editar(UUID id, CocheraRequestDto dto) {
+        Cochera cochera = buscarOLanzar(id);
+
+        boolean cambiaNumero = !cochera.getNumero().equals(dto.getNumero());
+        if (cambiaNumero && cocheraRepository.existsByNumero(dto.getNumero())) {
+            throw new ValidationException("Ya existe una cochera con ese numero.");
+        }
+
+        cochera.setNumero(dto.getNumero());
+        cochera.setSector(dto.getSector());
+        cochera.setTipo(dto.getTipo());
+        cochera.setEstado(dto.getEstado());
+
+        return toResponseDto(cocheraRepository.save(cochera));
+    }
+
+    @Override
+    public void eliminar(UUID id) {
+        Cochera cochera = buscarOLanzar(id);
+
+        if (reservaRepository.existsByCocheraId(id)) {
+            throw new ValidationException("No se puede eliminar una cochera que tiene reservas asociadas.");
+        }
+
+        cocheraRepository.delete(cochera);
+    }
+
+    @Override
     public List<CocheraResponseDto> listarDisponibles(LocalDate fecha, VehiculoTipo tipoVehiculo) {
         Set<UUID> ocupadas = reservaRepository.findByFechaAndEstado(fecha, ReservaEstado.CONFIRMADA).stream()
                 .map(reserva -> reserva.getCochera().getId())
@@ -57,6 +91,11 @@ public class CocheraService implements ICocheraService {
                 .filter(cochera -> esCompatible(cochera.getTipo(), tipoVehiculo))
                 .map(this::toResponseDto)
                 .toList();
+    }
+
+    private Cochera buscarOLanzar(UUID id) {
+        return cocheraRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Cochera no encontrada."));
     }
 
     private boolean esCompatible(CocheraTipo cocheraTipo, VehiculoTipo tipoVehiculo) {
