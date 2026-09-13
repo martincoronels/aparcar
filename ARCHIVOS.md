@@ -16,6 +16,7 @@ Convenciones:
 | `.gitignore` | Ignora `*.class`, `*.jar`, logs, etc. a nivel de todo el repo |
 | `README.md` | Guía de instalación y ejecución del proyecto completo (front + back) |
 | `ARCHIVOS.md` | Este archivo: mapa general de la estructura del proyecto |
+| `TESTS.md` 🆕 | Índice de qué prueba cada archivo de test, front y back, caso por caso |
 
 ---
 
@@ -106,7 +107,7 @@ Endpoints REST de la aplicación.
 | `ReservaController.java` | Alta y consulta de reservas |
 | `UserController.java` ✏️ | Gestión ADMIN de usuarios: activar, listar inactivos, eliminar, listar todos y editar |
 | `VehiculoController.java` | Alta y consulta de vehículos |
-| `VisitanteController.java` | Alta y consulta de visitantes |
+| `VisitanteController.java` ✏️ | Alta y consulta de visitantes, más `GET /me` y `POST /me` 🆕: el propio visitante (logueado) consulta o carga su perfil sin pasar por un admin |
 
 ### Endpoints de gestión de usuarios
 
@@ -184,7 +185,7 @@ Entidades JPA que representan los datos persistidos.
 
 | Archivo | Qué hace |
 |---|---|
-| `Visitante.java` | Entidad de visitantes |
+| `Visitante.java` ✏️ | Entidad de visitantes; agregado `appUser` (`@OneToOne` opcional hacia `AppUser`) para el login propio del visitante |
 | `Vehiculo.java` | Entidad de vehículos asociados a visitantes |
 | `VehiculoTipo.java` | Enum `AUTO`, `MOTO`, `CARGA` |
 | `Cochera.java` | Entidad de cocheras |
@@ -290,9 +291,9 @@ Lógica de negocio.
 | `IAuthService.java` / `impl/AuthService.java` | Registro, login y recuperación de contraseña |
 | `ICocheraService.java` / `impl/CocheraService.java` | Gestión y disponibilidad de cocheras |
 | `IReservaService.java` / `impl/ReservaService.java` | Lógica de reservas y validación de compatibilidad/disponibilidad |
-| `IUserService.java` / `impl/UserService.java` ✏️ | Gestión administrativa de usuarios: listar, editar, activar y eliminar |
+| `IUserService.java` / `impl/UserService.java` ✏️ | Gestión administrativa de usuarios: listar, editar, activar y eliminar. Al eliminar, desvincula primero el visitante propio de la cuenta (si tiene uno) antes de borrarla |
 | `IVehiculoService.java` / `impl/VehiculoService.java` | Gestión de vehículos |
-| `IVisitanteService.java` / `impl/VisitanteService.java` | Gestión de visitantes |
+| `IVisitanteService.java` / `impl/VisitanteService.java` ✏️ | Gestión de visitantes, más `obtenerPropio(email)` / `crearPropio(email, dto)` 🆕: el visitante carga sus propios datos vinculados a su cuenta |
 
 ### Comportamiento actual de alta de usuario
 
@@ -326,6 +327,11 @@ Un administrador puede posteriormente modificar sus authorities, activarlos o el
 | `db.changelog-master.yaml` | Lista de migraciones Liquibase |
 | `001-initial-schema.yaml` | Migración inicial actualmente vacía |
 | `002-visitantes-vehiculos-cocheras-reservas.yaml` | Crea tablas de visitantes, vehículos, cocheras y reservas |
+| `003-visitante-app-user.yaml` 🆕 | Agrega `visitantes.app_user_id` (único, sin FK física a propósito — ver nota abajo) para que un visitante pueda vincularse a su propia cuenta de login |
+
+### Por qué `003` no tiene foreign key física hacia `app_users`
+
+`app_users` no la crea Liquibase — la crea Hibernate con `ddl-auto: update`, que corre **después** de Liquibase. Una FK en `003` hacia esa tabla se rompe en cualquier base nueva (los tests con H2, o el primer `docker compose up` de otra persona) porque `app_users` todavía no existe cuando corre esta migración. Se detectó al escribir los tests: pasaba en la Postgres de desarrollo (porque esa tabla ya existía de arranques anteriores) pero fallaba siempre en H2. La relación la valida JPA (`@OneToOne` en `Visitante.java`), no la base.
 
 ---
 
@@ -346,18 +352,22 @@ Convención de esta sección: 🆕 = clase de test agregada al sumar cobertura d
 | `filters/JWTGeneratorFilterTests.java` 🆕 | **Caja blanca.** Prueba el filtro que arma el JWT directamente (mocks, sin Spring): genera `Authorization: Bearer ...` con email/authorities correctos solo si hay autenticación, y solo en `/login` |
 | `filters/RateLimitFilterTests.java` 🆕 | **Caja blanca.** Prueba el limitador de intentos directamente: deja pasar las primeras 5 requests por IP y bloquea (429) la 6ta; IPs distintas tienen buckets independientes |
 | `integration/AuthControllerTests.java` ✏️ | Tests de `/register`, `/login`, `/forgot-password`, `/reset-password`. Actualicé `registerValidatesInput` y `registerCreatesInactiveUser` porque `/register` pasó a requerir rol ADMIN (antes eran públicos y quedaron rotos por ese cambio); agregué los casos 401 (anónimo) y 403 (rol USER) |
+| `integration/CocheraControllerTests.java` | **Caja negra.** CRUD completo de `/api/v1/cocheras`: seguridad (401/403), validaciones, alta/edición/borrado y `/disponibles` de punta a punta |
 | `integration/DashboardAccessSecurityTests.java` 🆕 | **Caja negra.** Matriz de qué rol puede pegarle a qué endpoint: `/api/v1/visitantes`, `/vehiculos` y `/reservas` exigen solo estar autenticado (los usan ambos dashboards, sin importar el rol), `/api/v1/usuarios` exige ADMIN, `/api/v1/cocheras/disponibles` es público |
 | `integration/LoginFlowTests.java` 🆕 | **Caja negra**, contra un servidor real embebido (no MockMvc — ver el porqué en el comentario de la clase). Login real con HTTP Basic: verifica el JWT devuelto (email, authorities), 401 con email inexistente, y que en dev/test cualquier contraseña autentica |
+| `integration/ReservaControllerTests.java` 🆕 | **Caja negra.** Reglas de negocio de `/api/v1/reservas` contra DB real (no mocks): vehículo que no pertenece al visitante, incompatibilidad de tipos, doble reserva del mismo día, cochera ACCESIBLE acepta cualquier vehículo |
 | `integration/UserControllerTests.java` ✏️ | Tests de `/users/**` y `/api/v1/usuarios/**`. Agregué los casos de `PUT /api/v1/usuarios/{id}` (actualiza campos, 404 si no existe, 401 anónimo) |
+| `integration/VehiculoControllerTests.java` 🆕 | **Caja negra.** `/api/v1/vehiculos`: formato de patente, normalización a mayúsculas, patente/visitante duplicado o inexistente, filtro por `visitanteId` |
+| `integration/VisitanteControllerTests.java` 🆕 | **Caja negra.** `/api/v1/visitantes`, con foco en `/me` (el visitante carga su propio perfil): 404 sin perfil, alta, documento duplicado, cuenta que ya tiene un perfil cargado |
 | `security/AppUserDetailsServiceTests.java` 🆕 | **Caja blanca.** El puente AppUser → UserDetails: mapea authorities correctamente, lanza `UsernameNotFoundException` si el email no existe |
 | `security/authenticationProvider/DevAuthenticationProviderTests.java` 🆕 | **Caja blanca.** Documenta el comportamiento a propósito "inseguro" de dev: autentica sin validar la contraseña, siempre que el email exista |
 | `security/authenticationProvider/ProdAuthenticationProviderTests.java` 🆕 | **Caja blanca.** El que sí valida contraseña (perfil prod real): rechaza con `BadCredentialsException` tanto si la contraseña no matchea como si el usuario no existe (para no filtrar cuáles emails están registrados) |
 | `service/AuthServiceTests.java` | Tests unitarios de `AuthService` |
-| `service/CocheraServiceTests.java` | Tests de cocheras |
-| `service/ReservaServiceTests.java` | Tests de reservas |
-| `service/UserServiceTests.java` | Tests unitarios de gestión de usuarios |
+| `service/CocheraServiceTests.java` | Tests de cocheras, incluye la cancelación automática de reservas al deshabilitar una cochera |
+| `service/ReservaServiceTests.java` | Tests unitarios de reservas (con mocks): mismas reglas que `ReservaControllerTests` pero aisladas del repositorio |
+| `service/UserServiceTests.java` ✏️ | Tests de gestión de usuarios. Agregué los casos de `deleteUser`: desvincula el visitante propio antes de borrar la cuenta (evita romper la FK `fk_visitante_app_user`), y no hace nada si no hay ninguno vinculado |
 | `service/VehiculoServiceTests.java` | Tests de vehículos |
-| `service/VisitanteServiceTests.java` | Tests de visitantes |
+| `service/VisitanteServiceTests.java` ✏️ | Tests de visitantes. Agregué los casos de `obtenerPropio`/`crearPropio` (el flujo de `/me`): 404 sin perfil, cuenta que ya tiene uno, documento duplicado, alta correcta vinculada a la cuenta |
 
 ## Sobre `LoginFlowTests` y el bug de `getServletPath()` en MockMvc
 
@@ -385,8 +395,9 @@ No es un bug de producción — contra la app real (Docker) ya confirmamos a man
 | `jsconfig.json` | Define alias `@/` |
 | `kickstart.md` | Guía de instalación |
 | `next.config.mjs` | Configuración de Next.js |
-| `package.json` / `package-lock.json` | Dependencias |
+| `package.json` / `package-lock.json` ✏️ | Dependencias. Agregados `npm test` (`vitest run`) y `npm run test:watch` (`vitest`) |
 | `postcss.config.mjs` | Configuración Tailwind CSS 4 |
+| `vitest.config.mjs` 🆕 | Configuración de Vitest: entorno `jsdom`, alias `@/`, y el archivo de setup de `test/` |
 
 ---
 
@@ -394,7 +405,7 @@ No es un bug de producción — contra la app real (Docker) ya confirmamos a man
 
 | Archivo / carpeta | Qué hace |
 |---|---|
-| `api.jsx` | Instancia Axios compartida; configura base URL e inyecta JWT en requests autenticados |
+| `api.jsx` ✏️ | Instancia Axios compartida; configura base URL e inyecta JWT en requests autenticados. El interceptor de request **no pisa** un `Authorization` ya seteado a mano (ej. el `Basic` de `/login`) — antes lo pisaba con el `Bearer` de una cookie vieja, causando que el login pidiera el usuario y contraseña dos veces |
 | `favicon.ico` | Ícono de la aplicación |
 | `globals.css` | Estilos globales y Tailwind |
 | `layout.js` | Layout global y `<Toaster />` de Sonner |
@@ -412,8 +423,18 @@ Sección para usuarios con rol `ADMIN`.
 
 | Archivo | Qué hace |
 |---|---|
-| `page.jsx` 🆕 | Entrada del dashboard ADMIN, protegida con `requireAuth(["ADMIN"])` |
-| `VisitantesContent.jsx` 🆕 | Contenido de visitantes reutilizado dentro del dashboard administrativo |
+| `page.jsx` ✏️ | Entrada del dashboard ADMIN, protegida con `requireAuth(["ADMIN"])`. Combina la cuadrícula de cocheras, el alta de visitantes, y botones de navegación hacia `/cocheras` y `/usuarios` |
+| `EstadoCocherasGrid.jsx` 🆕 | Cuadrícula visual de ocupación: agrupa las cocheras por tipo (motos, autos, remolques, accesibles) y marca cada una como libre/ocupada/deshabilitada comparando `/api/v1/cocheras` contra `/api/v1/cocheras/disponibles` del día |
+| `VisitantesContent.jsx` | Alta de visitante + vehículo hecha por el admin (formulario completo) |
+
+### `app/dashboard-admin/cocheras/`
+
+Módulo de gestión de cocheras.
+
+| Archivo | Qué hace |
+|---|---|
+| `page.jsx` 🆕 | Ruta `/dashboard-admin/cocheras`; valida server-side rol `ADMIN` |
+| `CocherasManagement.jsx` 🆕 | CRUD completo de cocheras: alta, edición (con confirmación al deshabilitar una cochera con reservas), baja (bloqueada si tiene reservas asociadas), y filtros por sector/tipo/estado |
 
 ### `app/dashboard-admin/usuarios/`
 
@@ -443,8 +464,9 @@ Sección destinada a usuarios internos con rol `USER`.
 
 | Archivo | Qué hace |
 |---|---|
-| `page.jsx` 🆕 | Entrada del dashboard USER, protegida con `requireAuth(["USER"])` |
-| `ReservasContent.jsx` 🆕 | Contenido relacionado con reservas |
+| `page.jsx` ✏️ | Entrada del dashboard USER, protegida con `requireAuth(["USER"])`. Combina "Mis datos" y "Nueva reserva" en una sola página |
+| `MiPerfilContent.jsx` 🆕 | El propio visitante carga sus datos (nombre, documento, teléfono, email) una sola vez, vinculados a su cuenta (`/api/v1/visitantes/me`), y agrega sus vehículos |
+| `ReservasContent.jsx` ✏️ | Alta de reserva por patente: se escribe/elige la patente (autocompletado nativo) y se resuelve automáticamente el visitante y el tipo de vehículo, en vez de elegir visitante→vehículo por separado. Vuelve a pedir la lista de vehículos al hacer foco en el campo (si se cargó uno recién en "Mis datos", arriba, no queda desactualizada) |
 
 ---
 
@@ -497,6 +519,30 @@ await requireAuth(["ADMIN"]);
 ```
 
 Si el JWT no existe, redirige al login. Si existe pero no contiene alguno de los roles requeridos, redirige a `/unauthorized`.
+
+---
+
+# `test/` — tests automatizados (frontend)
+
+🆕 Toda la carpeta es nueva: no existía testing en el frontend antes de esta sesión. Usa **Vitest + React Testing Library + jsdom**, más `axios-mock-adapter` para probar los interceptores de `api.jsx` sin red real. Corre con `npm test` (una vez) o `npm run test:watch`.
+
+Convención: `test/` refleja la estructura de `app/`, `store/` y `utils/` (misma idea que `src/test/java/...` reflejando `src/main/java/...` en el backend).
+
+| Archivo | Qué prueba |
+|---|---|
+| `setup.js` | Carga los matchers de `jest-dom`, limpia el DOM y las cookies después de cada test |
+| `api.test.jsx` | Interceptores de `app/api.jsx`: baseURL, inyección del Bearer desde la cookie, **que no pise un Authorization ya seteado a mano** (regresión del bug del login doble), y el manejo de 401 (borra cookie + redirige) |
+| `login/page.test.jsx` | `app/login/page.jsx`: validaciones, Basic Auth armado correctamente, redirección según rol (ADMIN vs USER), errores del backend |
+| `store/authStore.test.js` | `store/authStore.js`: decodificación de authorities del JWT, cookie, expiración, `logout`/`checkAuth` |
+| `utils/env.test.js` | `utils/env.js`: prioridad de `window.__ENV` sobre el valor de build |
+| `dashboard-admin/EstadoCocherasGrid.test.jsx` | Agrupación por tipo, cálculo de ocupadas/libres/deshabilitadas, estado de carga y error |
+| `dashboard-admin/VisitantesContent.test.jsx` | Alta de visitante + vehículo (dos POST encadenados), validaciones, errores de duplicados |
+| `dashboard-admin/cocheras/CocherasManagement.test.jsx` | CRUD completo: filtros, alta, edición (con `window.confirm` al deshabilitar), baja (con confirmación) |
+| `dashboard-admin/usuarios/UserManagement.test.jsx` | Alta de usuario, activar, editar roles, eliminar (con confirmación) |
+| `dashboard-user/ReservasContent.test.jsx` | Resolución de visitante/vehículo por patente, cochera deshabilitada hasta tener match, **regresión del bug de caché de vehículos al hacer foco**, envío de la reserva |
+| `dashboard-user/MiPerfilContent.test.jsx` | Autoregistro del visitante (`/me`), alta de vehículo propio, validaciones y errores del backend |
+
+El detalle de qué casos prueba cada archivo (front y back) está en `TESTS.md`, en la raíz del repo.
 
 ---
 
