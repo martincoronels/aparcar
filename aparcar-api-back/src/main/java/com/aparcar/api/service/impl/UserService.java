@@ -8,6 +8,7 @@ import com.aparcar.api.entity.auth.InactiveUsersDto;
 import com.aparcar.api.exception.NotFoundException;
 import com.aparcar.api.exception.ValidationException;
 import com.aparcar.api.repository.AppUserRepository;
+import com.aparcar.api.repository.VisitanteRepository;
 import com.aparcar.api.service.IUserService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -26,6 +27,7 @@ public class UserService implements IUserService {
 
     private final AppUserRepository appUserRepository;
     private final IRevokedUserCache revokedUserCache;
+    private final VisitanteRepository visitanteRepository;
 
     @Override
     public void activateUser(String email) {
@@ -61,6 +63,15 @@ public class UserService implements IUserService {
 
         log.info("Revoking user's access");
         revokedUserCache.revoke(user.getEmail());
+
+        // Si el usuario habia cargado su propio perfil de visitante (login
+        // propio), hay que desvincularlo antes de borrar la cuenta: la FK
+        // app_user_id no tiene cascade, y el perfil (con sus reservas) debe
+        // seguir existiendo aunque se borre el login.
+        visitanteRepository.findByAppUser_Email(email).ifPresent(visitante -> {
+            visitante.setAppUser(null);
+            visitanteRepository.save(visitante);
+        });
 
         log.info("Deleting user: {}", user.getEmail());
         appUserRepository.delete(user);

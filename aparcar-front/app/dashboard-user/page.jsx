@@ -1,4 +1,5 @@
 import { requireAuth } from "@/utils/serverAuth";
+import MiPerfilContent from "./MiPerfilContent";
 import ReservasContent from "./ReservasContent";
 
 export default async function DashboardUserPage() {
@@ -6,5 +7,12 @@ export default async function DashboardUserPage() {
   // requireAuth redirige antes de que se mande HTML al navegador.
   await requireAuth(["USER"]);
 
-  return <ReservasContent />;
+  return (
+    <div className="min-h-screen bg-white px-4 py-12 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-3xl space-y-12">
+        <MiPerfilContent />
+        <ReservasContent />
+      </div>
+    </div>
+  );
 }

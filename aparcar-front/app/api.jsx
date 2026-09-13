@@ -10,15 +10,19 @@ const api = axios.create({
 
 api.interceptors.request.use((config) => {
   config.baseURL = getEnv("NEXT_PUBLIC_API_BASE_URL");
-  
-  let token = null;
-  if (typeof document !== "undefined") {
-    const match = document.cookie.match(new RegExp('(^| )JWT=([^;]+)'));
-    if (match) token = match[2];
-  }
 
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
+  // No pisar un Authorization que la propia llamada ya haya seteado a mano
+  // (ej. el Basic Auth de /login) con el Bearer de una cookie vieja.
+  if (!config.headers.Authorization) {
+    let token = null;
+    if (typeof document !== "undefined") {
+      const match = document.cookie.match(new RegExp('(^| )JWT=([^;]+)'));
+      if (match) token = match[2];
+    }
+
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
   }
   return config;
 });
