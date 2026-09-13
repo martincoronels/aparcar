@@ -19,6 +19,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.RequestEntity;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.client.ClientHttpResponse;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.web.client.ResponseErrorHandler;
 import org.springframework.web.client.RestTemplate;
@@ -68,6 +69,9 @@ class LoginFlowTests {
     @Autowired
     private AppUserRepository appUserRepository;
 
+    @Autowired
+    private PasswordEncoder passwordEncoder;
+
     @LocalServerPort
     private int port;
 
@@ -95,11 +99,11 @@ class LoginFlowTests {
         appUserRepository.deleteAll();
     }
 
-    private void saveUser(String email, Set<AppAuthority> authorities) {
+    private void saveUser(String email, String password, Set<AppAuthority> authorities) {
         AppUser user = new AppUser();
         user.setNombre("Test User");
         user.setEmail(email);
-        user.setPassword("password-hash-irrelevante-en-dev"); // DevAuthenticationProvider no la valida.
+        user.setPassword(passwordEncoder.encode(password));
         user.setAuthorities(authorities);
         user.setIsActive(true);
         appUserRepository.save(user);
@@ -119,9 +123,9 @@ class LoginFlowTests {
     @Test
     @DisplayName("login con credenciales válidas devuelve 200 y un JWT con el email y las authorities del usuario")
     void loginWithValidCredentialsReturnsJwtWithClaims() {
-        saveUser("mateo@mateo.com", Set.of(AppAuthority.USER, AppAuthority.ADMIN));
+        saveUser("mateo@mateo.com", "password-correcta", Set.of(AppAuthority.USER, AppAuthority.ADMIN));
 
-        ResponseEntity<String> response = login("mateo@mateo.com", "cualquier-password");
+        ResponseEntity<String> response = login("mateo@mateo.com", "password-correcta");
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
 
@@ -142,9 +146,9 @@ class LoginFlowTests {
     @Test
     @DisplayName("login con un usuario que solo tiene rol USER devuelve un JWT con una sola authority")
     void loginWithUserOnlyRoleReturnsJwtWithSingleAuthority() {
-        saveUser("solo-user@mateo.com", Set.of(AppAuthority.USER));
+        saveUser("solo-user@mateo.com", "password-correcta", Set.of(AppAuthority.USER));
 
-        ResponseEntity<String> response = login("solo-user@mateo.com", "cualquier-password");
+        ResponseEntity<String> response = login("solo-user@mateo.com", "password-correcta");
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
 
@@ -165,12 +169,13 @@ class LoginFlowTests {
     }
 
     @Test
-    @DisplayName("en el perfil de test/dev, cualquier contraseña autentica si el email existe")
-    void loginSucceedsWithAnyPasswordInDevProfile() {
-        saveUser("mateo@test.com", Set.of(AppAuthority.USER));
+    @DisplayName("en el perfil de test/dev, una contraseña incorrecta devuelve 401 sin JWT")
+    void loginRejectsWrongPasswordInDevProfile() {
+        saveUser("mateo@test.com", "password-correcta", Set.of(AppAuthority.USER));
 
         ResponseEntity<String> response = login("mateo@test.com", "esta-password-no-es-la-real");
 
-        assertEquals(HttpStatus.OK, response.getStatusCode());
+        assertEquals(HttpStatus.UNAUTHORIZED, response.getStatusCode());
+        assertNull(response.getHeaders().getFirst("Authorization"));
     }
 }

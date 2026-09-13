@@ -1,12 +1,14 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { toast } from "sonner";
 
 import api from "@/app/api";
+import LogoutButton from "@/components/LogoutButton";
 
 const cocheraSchema = z.object({
   numero: z.string().min(1, "El número es obligatorio"),
@@ -190,6 +192,16 @@ export default function CocherasManagement() {
   return (
     <div className="min-h-screen bg-white px-4 py-12 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-7xl">
+        <div className="mb-8 flex flex-wrap items-center justify-between gap-3">
+          <Link
+            href="/dashboard-admin"
+            className="rounded-xl bg-white px-4 py-2 text-sm font-semibold text-[#002147] ring-1 ring-inset ring-[#002147]/20 transition-colors hover:bg-[#002147]/5"
+          >
+            ← Volver al panel
+          </Link>
+          <LogoutButton />
+        </div>
+
         <div className="mb-8">
           <h1 className="text-3xl font-extrabold tracking-tight text-[#002147]">
             Gestión de cocheras

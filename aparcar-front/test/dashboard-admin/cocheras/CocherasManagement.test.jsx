@@ -14,6 +14,9 @@ const { getMock, postMock, putMock, deleteMock, toastSuccessMock, toastErrorMock
 vi.mock("@/app/api", () => ({
   default: { get: getMock, post: postMock, put: putMock, delete: deleteMock },
 }));
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ replace: vi.fn() }),
+}));
 vi.mock("sonner", () => ({ toast: { success: toastSuccessMock, error: toastErrorMock } }));
 
 const { default: CocherasManagement } = await import("@/app/dashboard-admin/cocheras/CocherasManagement");
@@ -31,6 +34,13 @@ describe("CocherasManagement", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     getMock.mockResolvedValue({ data: [] });
+  });
+
+  it("muestra la navegación de regreso al panel", () => {
+    render(<CocherasManagement />);
+
+    expect(screen.getByRole("link", { name: "← Volver al panel" }))
+      .toHaveAttribute("href", "/dashboard-admin");
   });
 
   it("carga y lista las cocheras existentes", async () => {
