@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { requireAuth } from "@/utils/serverAuth";
+import LogoutButton from "@/components/LogoutButton";
 import EstadoCocherasGrid from "./EstadoCocherasGrid";
 import VisitantesContent from "./VisitantesContent";
 
@@ -24,6 +25,7 @@ export default async function DashboardAdminPage() {
           >
             Gestionar usuarios
           </Link>
+          <LogoutButton />
         </div>
 
         <EstadoCocherasGrid />

@@ -1,4 +1,5 @@
 import { requireAuth } from "@/utils/serverAuth";
+import LogoutButton from "@/components/LogoutButton";
 import MiPerfilContent from "./MiPerfilContent";
 import ReservasContent from "./ReservasContent";
 
@@ -10,6 +11,9 @@ export default async function DashboardUserPage() {
   return (
     <div className="min-h-screen bg-white px-4 py-12 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-3xl space-y-12">
+        <div className="flex justify-end">
+          <LogoutButton />
+        </div>
         <MiPerfilContent />
         <ReservasContent />
       </div>

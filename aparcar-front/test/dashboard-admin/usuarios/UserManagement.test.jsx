@@ -14,6 +14,9 @@ const { getMock, postMock, putMock, deleteMock, toastSuccessMock, toastErrorMock
 vi.mock("@/app/api", () => ({
   default: { get: getMock, post: postMock, put: putMock, delete: deleteMock },
 }));
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ replace: vi.fn() }),
+}));
 vi.mock("sonner", () => ({ toast: { success: toastSuccessMock, error: toastErrorMock } }));
 
 const { default: UserManagement } = await import("@/app/dashboard-admin/usuarios/UserManagement");
@@ -32,6 +35,13 @@ describe("UserManagement", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     getMock.mockResolvedValue({ data: [] });
+  });
+
+  it("muestra la navegación de regreso al panel", () => {
+    render(<UserManagement />);
+
+    expect(screen.getByRole("link", { name: "← Volver al panel" }))
+      .toHaveAttribute("href", "/dashboard-admin");
   });
 
   it("carga y lista los usuarios existentes", async () => {

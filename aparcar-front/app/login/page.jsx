@@ -37,8 +37,16 @@ export default function LoginPage() {
       const response = await api.post(
         "/login",
         {},
-        { headers: { Authorization: `Basic ${credentials}` } }
+        {
+          headers: { Authorization: `Basic ${credentials}` },
+          validateStatus: (status) => status === 401 || (status >= 200 && status < 300),
+        }
       );
+
+      if (response.status === 401) {
+        toast.error("Credenciales incorrectas. Verificá tu email y contraseña.");
+        return;
+      }
 
       const authHeader = response.headers["authorization"];
       if (!authHeader) {
