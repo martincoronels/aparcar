@@ -2,6 +2,7 @@ package com.aparcar.api.controller;
 
 import com.aparcar.api.dto.reserva.VisitanteRequestDto;
 import com.aparcar.api.dto.reserva.VisitanteResponseDto;
+import com.aparcar.api.dto.reserva.VisitanteUpdateDto;
 import com.aparcar.api.service.IVisitanteService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -11,6 +12,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -45,6 +47,12 @@ public class VisitanteController {
             @Valid @RequestBody VisitanteRequestDto dto, Authentication authentication) {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(visitanteService.crearPropio(authentication.getName(), dto));
+    }
+
+    @PutMapping("/me")
+    public ResponseEntity<VisitanteResponseDto> actualizarPropio(
+            @Valid @RequestBody VisitanteUpdateDto dto, Authentication authentication) {
+        return ResponseEntity.ok(visitanteService.actualizarPropio(authentication.getName(), dto));
     }
 
     @GetMapping("/{id}")

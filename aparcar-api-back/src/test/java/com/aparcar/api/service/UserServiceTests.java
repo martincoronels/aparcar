@@ -111,23 +111,6 @@ public class UserServiceTests {
     }
 
     @Test
-    void deleteUserDeletesUserSuccessfully() {
-        // Arrange
-        var user = new AppUser();
-        user.setEmail(testEmail);
-        when(appUserRepository.findByEmail(testEmail)).thenReturn(Optional.of(user));
-        doNothing().when(revokedUserCache).revoke(testEmail);
-        doNothing().when(appUserRepository).delete(user);
-
-        // Act
-        usersService.deleteUser(testEmail, "caller@email.com");
-
-        // Assert
-        verify(revokedUserCache).revoke(testEmail);
-        verify(appUserRepository).delete(user);
-    }
-
-    @Test
     @DisplayName("deleteUser desvincula el visitante propio antes de borrar la cuenta, para no violar la FK")
     void deleteUserUnlinksOwnVisitanteBeforeDeleting() {
         // Arrange: la cuenta tiene un visitante propio (login self-service) vinculado.

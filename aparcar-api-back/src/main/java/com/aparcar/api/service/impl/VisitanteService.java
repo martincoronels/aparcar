@@ -2,6 +2,7 @@ package com.aparcar.api.service.impl;
 
 import com.aparcar.api.dto.reserva.VisitanteRequestDto;
 import com.aparcar.api.dto.reserva.VisitanteResponseDto;
+import com.aparcar.api.dto.reserva.VisitanteUpdateDto;
 import com.aparcar.api.entity.auth.AppUser;
 import com.aparcar.api.entity.reserva.Visitante;
 import com.aparcar.api.exception.NotFoundException;
@@ -72,6 +73,17 @@ public class VisitanteService implements IVisitanteService {
         visitante.setTelefono(dto.getTelefono());
         visitante.setEmail(dto.getEmail());
         visitante.setAppUser(appUser);
+
+        return toResponseDto(visitanteRepository.save(visitante));
+    }
+
+    @Override
+    public VisitanteResponseDto actualizarPropio(String email, VisitanteUpdateDto dto) {
+        Visitante visitante = visitanteRepository.findByAppUser_Email(email)
+                .orElseThrow(() -> new NotFoundException("Todavia no cargaste tus datos de visitante."));
+
+        visitante.setTelefono(dto.getTelefono());
+        visitante.setEmail(dto.getEmail());
 
         return toResponseDto(visitanteRepository.save(visitante));
     }
