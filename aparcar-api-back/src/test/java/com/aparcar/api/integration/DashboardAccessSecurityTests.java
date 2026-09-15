@@ -12,6 +12,7 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.security.core.context.SecurityContextHolder.getContext;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 
 /**
  * Caja negra: matriz de quién puede pegarle a qué endpoint, tal como lo
@@ -99,5 +100,17 @@ class DashboardAccessSecurityTests {
         var context = getContext();
         mockMvc.perform(get("/api/v1/usuarios").with(securityContext(context)))
                 .andExpect(status().isOk());
+    }
+
+    @Test
+    @WithMockUser(authorities = "USER")
+    @DisplayName("El 403 devuelve el mismo formato JSON que el 401 (no un 404 ni un body vacío)")
+    void forbiddenResponseHasConsistentJsonShape() throws Exception {
+        var context = getContext();
+        mockMvc.perform(get("/api/v1/usuarios").with(securityContext(context)))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.status").value(403))
+                .andExpect(jsonPath("$.error").value("Forbidden"))
+                .andExpect(jsonPath("$.path").value("/api/v1/usuarios"));
     }
 }
