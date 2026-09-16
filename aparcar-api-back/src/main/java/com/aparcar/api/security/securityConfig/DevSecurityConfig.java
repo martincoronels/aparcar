@@ -4,6 +4,7 @@ import com.aparcar.api.component.IRevokedUserCache;
 import com.aparcar.api.filters.JWTGeneratorFilter;
 import com.aparcar.api.filters.JWTValidationFilter;
 import com.aparcar.api.filters.RateLimitFilter;
+import com.aparcar.api.security.CustomAccessDeniedHandler;
 import com.aparcar.api.security.CustomBasicAuthenticationEntryPoint;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -94,20 +95,10 @@ public class DevSecurityConfig {
                                     List.of("http://localhost:*"));
 
                             config.setAllowedMethods(
-                                    List.of(
-                                            "GET",
-                                            "POST",
-                                            "PUT",
-                                            "DELETE",
-                                            "OPTIONS"
-                                    ));
+                                    List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
 
                             config.setAllowedHeaders(
-                                    List.of(
-                                            "Authorization",
-                                            "Content-Type",
-                                            "Accept"
-                                    ));
+                                    List.of("Authorization", "Content-Type", "Accept"));
 
                             config.setExposedHeaders(
                                     List.of("Authorization"));
@@ -121,9 +112,6 @@ public class DevSecurityConfig {
 
                 .authorizeHttpRequests(requests -> requests
 
-                        // Endpoints públicos. Van primero para que
-                        // /api/v1/cocheras/disponibles se resuelva acá y no
-                        // caiga en la regla de ADMIN de /api/v1/cocheras/** de abajo.
                         .requestMatchers(
                                 "/api/v1/cocheras/disponibles",
                                 "/forgot-password",
@@ -149,6 +137,9 @@ public class DevSecurityConfig {
                         ).authenticated()
 
                         .requestMatchers("/**").permitAll())
+
+                .exceptionHandling(handling -> handling
+                        .accessDeniedHandler(new CustomAccessDeniedHandler()))
 
                 .addFilterAfter(
                         jwtGeneratorFilter,

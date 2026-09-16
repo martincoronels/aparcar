@@ -23,6 +23,7 @@ import static org.springframework.security.core.context.SecurityContextHolder.ge
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.securityContext;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -216,5 +217,33 @@ public class VisitanteControllerTests {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"nombre\":\"Visitante Propio\",\"documento\":\"40222333\"}"))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @WithMockUser(username = "visitante@test.com", authorities = "USER")
+    @DisplayName("[Caja negra] PUT /api/v1/visitantes/me actualiza telefono y email")
+    void actualizarPropioActualizaTelefonoYEmail() throws Exception {
+        AppUser appUser = crearAppUser("visitante@test.com");
+        crearVisitante("Visitante Propio", "40222333", appUser);
+        var context = getContext();
+
+        mockMvc.perform(put("/api/v1/visitantes/me")
+                        .with(securityContext(context))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"telefono\":\"11-2222-3333\",\"email\":\"nuevo@mail.com\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.telefono").value("11-2222-3333"))
+                .andExpect(jsonPath("$.email").value("nuevo@mail.com"))
+                .andExpect(jsonPath("$.nombre").value("Visitante Propio"));
+    }
+
+    @Test
+    @WithAnonymousUser
+    @DisplayName("[Caja negra] PUT /api/v1/visitantes/me devuelve 401 para anonimos")
+    void actualizarPropioDevuelve401ParaAnonimos() throws Exception {
+        mockMvc.perform(put("/api/v1/visitantes/me")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isUnauthorized());
     }
 }

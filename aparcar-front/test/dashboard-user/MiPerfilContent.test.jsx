@@ -1,15 +1,18 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import api from "@/app/api";
 
-const { getMock, postMock, toastSuccessMock, toastErrorMock } = vi.hoisted(() => ({
+const { getMock, postMock, putMock, deleteMock, toastSuccessMock, toastErrorMock } = vi.hoisted(() => ({
   getMock: vi.fn(),
   postMock: vi.fn(),
+  putMock: vi.fn(),
+  deleteMock: vi.fn(),
   toastSuccessMock: vi.fn(),
   toastErrorMock: vi.fn(),
 }));
 
-vi.mock("@/app/api", () => ({ default: { get: getMock, post: postMock } }));
+vi.mock("@/app/api", () => ({ default: { get: getMock, post: postMock, put: putMock, delete: deleteMock} }));
 vi.mock("sonner", () => ({ toast: { success: toastSuccessMock, error: toastErrorMock } }));
 
 const { default: MiPerfilContent } = await import("@/app/dashboard-user/MiPerfilContent");
@@ -165,5 +168,88 @@ describe("MiPerfilContent", () => {
     await waitFor(() =>
       expect(getMock.mock.calls.filter((c) => c[0] === "/api/v1/vehiculos").length).toBeGreaterThanOrEqual(2)
     );
+  });
+
+    it("el boton 'Editar mis datos' precarga telefono y email actuales", async () => {
+    getMock.mockImplementation((url) => {
+      if (url === "/api/v1/visitantes/me")
+        return Promise.resolve({ data: { id: "v1", nombre: "Juan Perez", documento: "30111222", telefono: "111", email: "a@a.com" } });
+      if (url === "/api/v1/vehiculos") return Promise.resolve({ data: [] });
+      return Promise.reject(new Error("URL no mockeada"));
+    });
+    const user = userEvent.setup();
+    render(<MiPerfilContent />);
+    await screen.findByText("Juan Perez");
+
+    await user.click(screen.getByRole("button", { name: /editar mis datos/i }));
+
+    expect(screen.getByDisplayValue("111")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("a@a.com")).toBeInTheDocument();
+  });
+
+  it("guarda los cambios de telefono/email con PUT /api/v1/visitantes/me", async () => {
+    const putMock = vi.fn().mockResolvedValue({
+      data: { id: "v1", nombre: "Juan Perez", documento: "30111222", telefono: "222", email: "b@b.com" },
+    });
+    api.put = putMock;
+    getMock.mockImplementation((url) => {
+      if (url === "/api/v1/visitantes/me")
+        return Promise.resolve({ data: { id: "v1", nombre: "Juan Perez", documento: "30111222" } });
+      if (url === "/api/v1/vehiculos") return Promise.resolve({ data: [] });
+      return Promise.reject(new Error("URL no mockeada"));
+    });
+    const user = userEvent.setup();
+    render(<MiPerfilContent />);
+    await screen.findByText("Juan Perez");
+
+    await user.click(screen.getByRole("button", { name: /editar mis datos/i }));
+    await user.type(screen.getByLabelText("Teléfono"), "222");
+    await user.type(screen.getByLabelText("Email"), "b@b.com");
+    await user.click(screen.getByRole("button", { name: /guardar cambios/i }));
+
+    await waitFor(() =>
+      expect(putMock).toHaveBeenCalledWith("/api/v1/visitantes/me", { telefono: "222", email: "b@b.com" })
+    );
+    expect(toastSuccessMock).toHaveBeenCalledWith("Tus datos se actualizaron correctamente");
+  });
+
+  it("edita un vehiculo existente con PUT /api/v1/vehiculos/{id}", async () => {
+    const putMock = vi.fn().mockResolvedValue({ data: {} });
+    api.put = putMock;
+    getMock.mockImplementation((url) => {
+      if (url === "/api/v1/visitantes/me")
+        return Promise.resolve({ data: { id: "v1", nombre: "Juan Perez", documento: "30111222" } });
+      if (url === "/api/v1/vehiculos") return Promise.resolve({ data: [{ id: "veh1", patente: "ABC123", tipo: "AUTO" }] });
+      return Promise.reject(new Error("URL no mockeada"));
+    });
+    const user = userEvent.setup();
+    render(<MiPerfilContent />);
+    await screen.findByText("ABC123");
+
+    await user.click(screen.getByRole("button", { name: /editar/i }));
+    await user.click(screen.getByRole("button", { name: /guardar/i }));
+
+    await waitFor(() =>
+      expect(putMock).toHaveBeenCalledWith("/api/v1/vehiculos/veh1", { patente: "ABC123", tipo: "AUTO" })
+    );
+  });
+
+  it("elimina un vehiculo con confirmacion", async () => {
+    const deleteMock = vi.fn().mockResolvedValue({});
+    api.delete = deleteMock;
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+    getMock.mockImplementation((url) => {
+      if (url === "/api/v1/visitantes/me")
+        return Promise.resolve({ data: { id: "v1", nombre: "Juan Perez", documento: "30111222" } });
+      if (url === "/api/v1/vehiculos") return Promise.resolve({ data: [{ id: "veh1", patente: "ABC123", tipo: "AUTO" }] });
+      return Promise.reject(new Error("URL no mockeada"));
+    });
+    const user = userEvent.setup();
+    render(<MiPerfilContent />);
+    await screen.findByText("ABC123");
+
+    await user.click(screen.getByRole("button", { name: /eliminar/i }));
+
+    await waitFor(() => expect(deleteMock).toHaveBeenCalledWith("/api/v1/vehiculos/veh1"));
   });
 });

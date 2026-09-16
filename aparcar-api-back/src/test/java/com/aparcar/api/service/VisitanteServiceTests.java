@@ -2,6 +2,7 @@ package com.aparcar.api.service;
 
 import com.aparcar.api.config.UnitTests;
 import com.aparcar.api.dto.reserva.VisitanteRequestDto;
+import com.aparcar.api.dto.reserva.VisitanteUpdateDto;
 import com.aparcar.api.entity.auth.AppUser;
 import com.aparcar.api.entity.reserva.Visitante;
 import com.aparcar.api.exception.NotFoundException;
@@ -163,5 +164,35 @@ public class VisitanteServiceTests {
         var response = visitanteService.crearPropio("visitante@test.com", dto);
 
         assertEquals(dto.getNombre(), response.nombre());
+    }
+
+    @Test
+    @DisplayName("actualizarPropio lanza NotFoundException si la cuenta no tiene un visitante vinculado")
+    void actualizarPropioLanzaNotFoundExceptionSiNoTienePerfil() {
+        VisitanteUpdateDto dto = new VisitanteUpdateDto();
+        dto.setTelefono("11-2222-3333");
+        when(visitanteRepository.findByAppUser_Email("test@mail.com")).thenReturn(Optional.empty());
+
+        assertThrows(NotFoundException.class, () -> visitanteService.actualizarPropio("test@mail.com", dto));
+    }
+
+    @Test
+    @DisplayName("actualizarPropio actualiza telefono y email sin tocar nombre ni documento")
+    void actualizarPropioActualizaTelefonoYEmail() {
+        Visitante visitante = new Visitante();
+        visitante.setNombre("Juan Perez");
+        visitante.setDocumento("30111222");
+        VisitanteUpdateDto dto = new VisitanteUpdateDto();
+        dto.setTelefono("11-2222-3333");
+        dto.setEmail("nuevo@mail.com");
+
+        when(visitanteRepository.findByAppUser_Email("test@mail.com")).thenReturn(Optional.of(visitante));
+        when(visitanteRepository.save(any())).thenAnswer(i -> i.getArgument(0));
+
+        var result = visitanteService.actualizarPropio("test@mail.com", dto);
+
+        assertEquals("Juan Perez", result.nombre());
+        assertEquals("11-2222-3333", result.telefono());
+        assertEquals("nuevo@mail.com", result.email());
     }
 }

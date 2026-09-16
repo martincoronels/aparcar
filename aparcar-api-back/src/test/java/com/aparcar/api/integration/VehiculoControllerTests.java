@@ -1,10 +1,13 @@
 package com.aparcar.api.integration;
 
 import com.aparcar.api.config.IntegrationTests;
+import com.aparcar.api.entity.auth.AppAuthority;
+import com.aparcar.api.entity.auth.AppUser;
 import com.aparcar.api.entity.reserva.Vehiculo;
 import com.aparcar.api.entity.reserva.VehiculoTipo;
 import com.aparcar.api.entity.reserva.Visitante;
 import com.aparcar.api.repository.VehiculoRepository;
+import com.aparcar.api.repository.AppUserRepository;
 import com.aparcar.api.repository.VisitanteRepository;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
@@ -15,12 +18,15 @@ import org.springframework.security.test.context.support.WithAnonymousUser;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.util.Set;
 import java.util.UUID;
 
 import static org.springframework.security.core.context.SecurityContextHolder.getContext;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.securityContext;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -37,12 +43,25 @@ public class VehiculoControllerTests {
     private VisitanteRepository visitanteRepository;
 
     @Autowired
+    private AppUserRepository appUserRepository;
+
+    @Autowired
     private MockMvc mockMvc;
 
     @AfterEach
     void tearDown() {
         vehiculoRepository.deleteAll();
         visitanteRepository.deleteAll();
+    }
+
+    private AppUser crearAppUser(String email) {
+        AppUser user = new AppUser();
+        user.setNombre("Cuenta de prueba");
+        user.setEmail(email);
+        user.setPassword("hash-irrelevante");
+        user.setAuthorities(Set.of(AppAuthority.USER));
+        user.setIsActive(true);
+        return appUserRepository.save(user);
     }
 
     private Visitante crearVisitante(String documento) {
@@ -189,5 +208,50 @@ public class VehiculoControllerTests {
         mockMvc.perform(get("/api/v1/vehiculos/" + vehiculo.getId()).with(securityContext(context)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.patente").value("ABC123"));
+    }
+
+    @Test
+    @WithMockUser(username = "dueño@test.com", authorities = "USER")
+    @DisplayName("[Caja negra] PUT /api/v1/vehiculos/{id} devuelve 403 si no es el dueño")
+    void editarDevuelve403SiNoEsElDueño() throws Exception {
+        AppUser dueño = crearAppUser("otro@test.com");
+        Visitante visitante = crearVisitante("30111222");
+        Vehiculo vehiculo = crearVehiculo("ABC123", VehiculoTipo.AUTO, visitante);
+        var context = getContext();
+
+        mockMvc.perform(put("/api/v1/vehiculos/" + vehiculo.getId())
+                        .with(securityContext(context))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"patente\":\"XYZ999\",\"tipo\":\"MOTO\"}"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @WithMockUser(username = "dueño@test.com", authorities = "USER")
+    @DisplayName("[Caja negra] PUT /api/v1/vehiculos/{id} permite al dueño editar su vehiculo")
+    void editarPermiteAlDueñoEditarSuVehiculo() throws Exception {
+        AppUser dueño = crearAppUser("dueño@test.com");
+        Visitante visitante = crearVisitante("30111222");
+        Vehiculo vehiculo = crearVehiculo("ABC123", VehiculoTipo.AUTO, visitante);
+        var context = getContext();
+
+        mockMvc.perform(put("/api/v1/vehiculos/" + vehiculo.getId())
+                        .with(securityContext(context))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"patente\":\"XYZ999\",\"tipo\":\"MOTO\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.patente").value("XYZ999"));
+    }
+
+    @Test
+    @WithMockUser(authorities = "ADMIN")
+    @DisplayName("[Caja negra] DELETE /api/v1/vehiculos/{id} devuelve 204 cuando no tiene reservas")
+    void eliminarDevuelve204CuandoNoTieneReservas() throws Exception {
+        Visitante visitante = crearVisitante("30111222");
+        Vehiculo vehiculo = crearVehiculo("ABC123", VehiculoTipo.AUTO, visitante);
+        var context = getContext();
+
+        mockMvc.perform(delete("/api/v1/vehiculos/" + vehiculo.getId()).with(securityContext(context)))
+                .andExpect(status().isNoContent());
     }
 }

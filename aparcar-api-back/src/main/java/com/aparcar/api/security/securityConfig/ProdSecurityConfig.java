@@ -4,6 +4,7 @@ import com.aparcar.api.component.IRevokedUserCache;
 import com.aparcar.api.filters.JWTGeneratorFilter;
 import com.aparcar.api.filters.JWTValidationFilter;
 import com.aparcar.api.filters.RateLimitFilter;
+import com.aparcar.api.security.CustomAccessDeniedHandler;
 import com.aparcar.api.security.CustomBasicAuthenticationEntryPoint;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -100,20 +101,10 @@ public class ProdSecurityConfig {
                                     List.of("https://*.aparcar.com.ar"));
 
                             config.setAllowedMethods(
-                                    List.of(
-                                            "GET",
-                                            "POST",
-                                            "PUT",
-                                            "DELETE",
-                                            "OPTIONS"
-                                    ));
+                                    List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
 
                             config.setAllowedHeaders(
-                                    List.of(
-                                            "Authorization",
-                                            "Content-Type",
-                                            "Accept"
-                                    ));
+                                    List.of("Authorization", "Content-Type", "Accept"));
 
                             config.setExposedHeaders(
                                     List.of("Authorization"));
@@ -135,17 +126,17 @@ public class ProdSecurityConfig {
                                 "/forgot-password",
                                 "/reset-password"
                         ).permitAll()
-
                         // Solo ADMIN puede gestionar usuarios, registrar
                         // nuevos usuarios internos y administrar cocheras.
+
                         .requestMatchers(
                                 "/users/**",
                                 "/api/v1/usuarios/**",
                                 "/register",
                                 "/api/v1/cocheras/**"
                         ).hasAuthority("ADMIN")
-
                         // Cualquier usuario autenticado.
+
                         .requestMatchers(
                                 "/api/v1/reservas/**",
                                 "/api/v1/vehiculos/**",
@@ -178,6 +169,9 @@ public class ProdSecurityConfig {
                             return new AuthorizationDecision(false);
                         }))
 
+                .exceptionHandling(handling -> handling
+                        .accessDeniedHandler(new CustomAccessDeniedHandler()))
+
                 .addFilterAfter(
                         jwtGeneratorFilter,
                         BasicAuthenticationFilter.class)
@@ -196,13 +190,13 @@ public class ProdSecurityConfig {
 
                 .build();
     }
-
     /**
      * Provides a BCryptPasswordEncoder with strength 12 for production password
      * hashing.
      *
      * @return A BCryptPasswordEncoder instance with higher security rounds.
      */
+
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder(12);
