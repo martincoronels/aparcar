@@ -1,14 +1,14 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useAuthStore } from "../store/authStore";
 import Home from "../app/page";
 
-const replaceMock = vi.fn();
+const mockReplace = vi.fn();
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({
-    replace: replaceMock,
+    replace: mockReplace,
   }),
 }));
 
@@ -30,7 +30,7 @@ describe("Home (landing)", () => {
 
     render(<Home />);
 
-    expect(replaceMock).toHaveBeenCalledWith("/dashboard-admin");
+    expect(mockReplace).toHaveBeenCalledWith("/dashboard-admin");
   });
 
   it("con rol USER autenticado, redirige a /dashboard-user", () => {
@@ -38,7 +38,7 @@ describe("Home (landing)", () => {
 
     render(<Home />);
 
-    expect(replaceMock).toHaveBeenCalledWith("/dashboard-user");
+    expect(mockReplace).toHaveBeenCalledWith("/dashboard-user");
   });
 
   it("el menu hamburguesa se abre y cierra en mobile", async () => {
