@@ -1,12 +1,11 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
+import { useAuthStore } from "@/store/authStore";
+import Home from "@/app/page";
 
 const { replaceMock } = vi.hoisted(() => ({ replaceMock: vi.fn() }));
 
 vi.mock("next/navigation", () => ({ useRouter: () => ({ replace: replaceMock }) }));
-
-const { useAuthStore } = await import("@/store/authStore");
-const { default: Home } = await import("@/app/page");
 
 describe("Home (landing)", () => {
   beforeEach(() => {
