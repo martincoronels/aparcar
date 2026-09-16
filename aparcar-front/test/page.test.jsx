@@ -1,11 +1,16 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
+import userEvent from "@testing-library/user-event";
 import { useAuthStore } from "../store/authStore";
 import Home from "../app/page";
 
-const { replaceMock } = vi.hoisted(() => ({ replaceMock: vi.fn() }));
+const replaceMock = vi.fn();
 
-vi.mock("next/navigation", () => ({ useRouter: () => ({ replace: replaceMock }) }));
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({
+    replace: replaceMock,
+  }),
+}));
 
 describe("Home (landing)", () => {
   beforeEach(() => {
@@ -37,7 +42,6 @@ describe("Home (landing)", () => {
   });
 
   it("el menu hamburguesa se abre y cierra en mobile", async () => {
-    const { default: userEvent } = await import("@testing-library/user-event");
     const user = userEvent.setup();
     render(<Home />);
 
