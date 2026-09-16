@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
-import { useAuthStore } from "@/store/authStore";
-import Home from "@/app/page";
+import { useAuthStore } from "../store/authStore";
+import Home from "../app/page";
 
 const { replaceMock } = vi.hoisted(() => ({ replaceMock: vi.fn() }));
 
