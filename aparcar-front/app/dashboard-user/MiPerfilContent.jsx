@@ -16,6 +16,11 @@ const perfilSchema = z.object({
   email: z.string().email("Ingresa un correo válido").or(z.literal("")).optional(),
 });
 
+const editPerfilSchema = z.object({
+  telefono: z.string().optional(),
+  email: z.string().email("Ingresa un correo válido").or(z.literal("")).optional(),
+});
+
 const vehiculoSchema = z.object({
   patente: z
     .string()
@@ -34,12 +39,16 @@ export default function MiPerfilContent() {
   const [visitante, setVisitante] = useState(null);
   const [vehiculos, setVehiculos] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [editandoPerfil, setEditandoPerfil] = useState(false);
+  const [editandoVehiculoId, setEditandoVehiculoId] = useState(null);
 
   const perfilForm = useForm({ resolver: zodResolver(perfilSchema) });
+  const editPerfilForm = useForm({ resolver: zodResolver(editPerfilSchema) });
   const vehiculoForm = useForm({
     resolver: zodResolver(vehiculoSchema),
     defaultValues: { patente: "", tipo: "AUTO" },
   });
+  const editVehiculoForm = useForm({ resolver: zodResolver(vehiculoSchema) });
 
   const cargarVehiculos = async (visitanteId) => {
     const res = await api.get("/api/v1/vehiculos", { params: { visitanteId } });
@@ -83,6 +92,25 @@ export default function MiPerfilContent() {
     }
   };
 
+  const startEditandoPerfil = () => {
+    editPerfilForm.reset({ telefono: visitante.telefono || "", email: visitante.email || "" });
+    setEditandoPerfil(true);
+  };
+
+  const onEditarPerfil = async (data) => {
+    try {
+      const res = await api.put("/api/v1/visitantes/me", {
+        telefono: data.telefono || undefined,
+        email: data.email || undefined,
+      });
+      toast.success("Tus datos se actualizaron correctamente");
+      setVisitante(res.data);
+      setEditandoPerfil(false);
+    } catch (err) {
+      toast.error(err.response?.data?.message || "No se pudieron actualizar tus datos.");
+    }
+  };
+
   const onAgregarVehiculo = async (data) => {
     try {
       await api.post("/api/v1/vehiculos", { ...data, visitanteId: visitante.id });
@@ -91,6 +119,37 @@ export default function MiPerfilContent() {
       await cargarVehiculos(visitante.id);
     } catch (err) {
       toast.error(err.response?.data?.message || "No se pudo agregar el vehículo.");
+    }
+  };
+
+  const startEditandoVehiculo = (vehiculo) => {
+    editVehiculoForm.reset({ patente: vehiculo.patente, tipo: vehiculo.tipo });
+    setEditandoVehiculoId(vehiculo.id);
+  };
+
+  const onEditarVehiculo = async (data) => {
+    try {
+      await api.put(`/api/v1/vehiculos/${editandoVehiculoId}`, data);
+      toast.success("Vehículo actualizado correctamente");
+      setEditandoVehiculoId(null);
+      await cargarVehiculos(visitante.id);
+    } catch (err) {
+      toast.error(err.response?.data?.message || "No se pudo actualizar el vehículo.");
+    }
+  };
+
+  const eliminarVehiculo = async (vehiculo) => {
+    const confirmado = window.confirm(`¿Seguro que querés eliminar el vehículo ${vehiculo.patente}?`);
+    if (!confirmado) {
+      return;
+    }
+
+    try {
+      await api.delete(`/api/v1/vehiculos/${vehiculo.id}`);
+      toast.success("Vehículo eliminado correctamente");
+      await cargarVehiculos(visitante.id);
+    } catch (err) {
+      toast.error(err.response?.data?.message || "No se pudo eliminar el vehículo.");
     }
   };
 
@@ -147,12 +206,61 @@ export default function MiPerfilContent() {
       ) : (
         <div className="space-y-8">
           <div className="rounded-2xl bg-white p-6 shadow-xl shadow-[#002147]/10 ring-1 ring-[#002147]/15">
-            <h2 className="text-lg font-bold text-[#002147]">{visitante.nombre}</h2>
-            <p className="text-sm text-[#002147]/60">
-              Documento {visitante.documento}
-              {visitante.telefono ? ` · ${visitante.telefono}` : ""}
-              {visitante.email ? ` · ${visitante.email}` : ""}
-            </p>
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h2 className="text-lg font-bold text-[#002147]">{visitante.nombre}</h2>
+                <p className="text-sm text-[#002147]/60">
+                  Documento {visitante.documento}
+                  {visitante.telefono ? ` · ${visitante.telefono}` : ""}
+                  {visitante.email ? ` · ${visitante.email}` : ""}
+                </p>
+              </div>
+
+              {!editandoPerfil && (
+                <button
+                  type="button"
+                  onClick={startEditandoPerfil}
+                  className="shrink-0 rounded-lg border border-[#002147]/20 px-3 py-2 text-xs font-semibold text-[#002147] hover:bg-[#002147]/5 transition-colors"
+                >
+                  Editar mis datos
+                </button>
+              )}
+            </div>
+
+            {editandoPerfil && (
+              <form
+                className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2"
+                onSubmit={editPerfilForm.handleSubmit(onEditarPerfil)}
+              >
+                <div>
+                  <label className={labelClasses} htmlFor="edit-telefono">Teléfono</label>
+                  <input id="edit-telefono" {...editPerfilForm.register("telefono")} className={inputClasses} />
+                </div>
+                <div>
+                  <label className={labelClasses} htmlFor="edit-email">Email</label>
+                  <input id="edit-email" type="email" {...editPerfilForm.register("email")} className={inputClasses} />
+                  {editPerfilForm.formState.errors.email && (
+                    <p className="mt-1 text-sm text-red-500">{editPerfilForm.formState.errors.email.message}</p>
+                  )}
+                </div>
+                <div className="flex gap-2 sm:col-span-2">
+                  <button
+                    type="submit"
+                    disabled={editPerfilForm.formState.isSubmitting}
+                    className="rounded-xl bg-[#0cb7f2] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#002147] transition-all disabled:opacity-50"
+                  >
+                    Guardar cambios
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setEditandoPerfil(false)}
+                    className="rounded-xl px-4 py-2.5 text-sm font-medium text-[#002147]/70 hover:bg-[#002147]/5 transition-colors"
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              </form>
+            )}
           </div>
 
           <div className="rounded-2xl bg-white p-6 shadow-xl shadow-[#002147]/10 ring-1 ring-[#002147]/15">
@@ -162,12 +270,67 @@ export default function MiPerfilContent() {
               <p className="text-sm text-[#002147]/60 mb-4">Todavía no cargaste ningún vehículo.</p>
             ) : (
               <ul className="mb-4 divide-y divide-[#002147]/10">
-                {vehiculos.map((v) => (
-                  <li key={v.id} className="py-2 flex items-center justify-between text-sm">
-                    <span className="font-medium text-[#002147]">{v.patente}</span>
-                    <span className="text-[#002147]/60">{v.tipo}</span>
-                  </li>
-                ))}
+                {vehiculos.map((v) =>
+                  editandoVehiculoId === v.id ? (
+                    <li key={v.id} className="py-3">
+                      <form
+                        className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_auto_auto_auto] sm:items-start"
+                        onSubmit={editVehiculoForm.handleSubmit(onEditarVehiculo)}
+                      >
+                        <div>
+                          <input
+                            {...editVehiculoForm.register("patente")}
+                            className={`${inputClasses} uppercase`}
+                          />
+                          {editVehiculoForm.formState.errors.patente && (
+                            <p className="mt-1 text-sm text-red-500">
+                              {editVehiculoForm.formState.errors.patente.message}
+                            </p>
+                          )}
+                        </div>
+                        <select {...editVehiculoForm.register("tipo")} className={inputClasses}>
+                          <option value="AUTO">Auto</option>
+                          <option value="MOTO">Moto</option>
+                          <option value="CARGA">Carga</option>
+                        </select>
+                        <button
+                          type="submit"
+                          className="rounded-xl bg-[#0cb7f2] px-4 py-3 text-sm font-semibold text-white hover:bg-[#002147] transition-all"
+                        >
+                          Guardar
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setEditandoVehiculoId(null)}
+                          className="rounded-xl px-4 py-3 text-sm font-medium text-[#002147]/70 hover:bg-[#002147]/5 transition-colors"
+                        >
+                          Cancelar
+                        </button>
+                      </form>
+                    </li>
+                  ) : (
+                    <li key={v.id} className="py-2 flex items-center justify-between text-sm">
+                      <span className="font-medium text-[#002147]">{v.patente}</span>
+                      <span className="text-[#002147]/60">{v.tipo}</span>
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => startEditandoVehiculo(v)}
+                          className="rounded-lg border border-[#002147]/20 px-2.5 py-1 text-xs font-semibold text-[#002147] hover:bg-[#002147]/5 transition-colors"
+                        >
+                          Editar
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => eliminarVehiculo(v)}
+                          className="rounded-lg border border-red-200 px-2.5 py-1 text-xs font-semibold text-red-600 hover:bg-red-50 transition-colors"
+                        >
+                          Eliminar
+                        </button>
+                      </div>
+                    </li>
+                  )
+                )}
               </ul>
             )}
 

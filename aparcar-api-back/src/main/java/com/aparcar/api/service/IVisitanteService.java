@@ -2,6 +2,7 @@ package com.aparcar.api.service;
 
 import com.aparcar.api.dto.reserva.VisitanteRequestDto;
 import com.aparcar.api.dto.reserva.VisitanteResponseDto;
+import com.aparcar.api.dto.reserva.VisitanteUpdateDto;
 import com.aparcar.api.exception.NotFoundException;
 import com.aparcar.api.exception.ValidationException;
 
@@ -10,8 +11,6 @@ import java.util.UUID;
 
 public interface IVisitanteService {
     /**
-     * Crea un visitante nuevo.
-     *
      * @throws ValidationException Si ya existe un visitante con el mismo documento.
      */
     VisitanteResponseDto crear(VisitanteRequestDto dto);
@@ -35,4 +34,12 @@ public interface IVisitanteService {
      *                              visitante con el mismo documento.
      */
     VisitanteResponseDto crearPropio(String email, VisitanteRequestDto dto);
+
+    /**
+     * Actualiza los campos opcionales (telefono, email) del visitante vinculado a la
+     * cuenta autenticada. No permite modificar nombre ni documento.
+     *
+     * @throws NotFoundException Si la cuenta autenticada todavia no cargo sus datos de visitante.
+     */
+    VisitanteResponseDto actualizarPropio(String email, VisitanteUpdateDto dto);
 }

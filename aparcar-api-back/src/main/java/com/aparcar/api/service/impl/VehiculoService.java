@@ -2,14 +2,18 @@ package com.aparcar.api.service.impl;
 
 import com.aparcar.api.dto.reserva.VehiculoRequestDto;
 import com.aparcar.api.dto.reserva.VehiculoResponseDto;
+import com.aparcar.api.dto.reserva.VehiculoUpdateDto;
+import com.aparcar.api.entity.auth.AppUser;
 import com.aparcar.api.entity.reserva.Vehiculo;
 import com.aparcar.api.entity.reserva.Visitante;
 import com.aparcar.api.exception.NotFoundException;
 import com.aparcar.api.exception.ValidationException;
+import com.aparcar.api.repository.ReservaRepository;
 import com.aparcar.api.repository.VehiculoRepository;
 import com.aparcar.api.repository.VisitanteRepository;
 import com.aparcar.api.service.IVehiculoService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -20,6 +24,7 @@ import java.util.UUID;
 public class VehiculoService implements IVehiculoService {
     private final VehiculoRepository vehiculoRepository;
     private final VisitanteRepository visitanteRepository;
+    private final ReservaRepository reservaRepository;
 
     @Override
     public VehiculoResponseDto crear(VehiculoRequestDto dto) {
@@ -52,6 +57,46 @@ public class VehiculoService implements IVehiculoService {
     @Override
     public List<VehiculoResponseDto> listarPorVisitante(UUID visitanteId) {
         return vehiculoRepository.findByVisitanteId(visitanteId).stream().map(this::toResponseDto).toList();
+    }
+
+    @Override
+    public VehiculoResponseDto editar(UUID id, VehiculoUpdateDto dto, String requesterEmail, boolean requesterIsAdmin) {
+        Vehiculo vehiculo = buscarPorId(id);
+        verificarPropietario(vehiculo, requesterEmail, requesterIsAdmin);
+
+        String patente = dto.getPatente().toUpperCase();
+        boolean cambiaPatente = !vehiculo.getPatente().equals(patente);
+        if (cambiaPatente && vehiculoRepository.existsByPatente(patente)) {
+            throw new ValidationException("Ya existe un vehiculo con esa patente.");
+        }
+
+        vehiculo.setPatente(patente);
+        vehiculo.setTipo(dto.getTipo());
+
+        return toResponseDto(vehiculoRepository.save(vehiculo));
+    }
+
+    @Override
+    public void eliminar(UUID id, String requesterEmail, boolean requesterIsAdmin) {
+        Vehiculo vehiculo = buscarPorId(id);
+        verificarPropietario(vehiculo, requesterEmail, requesterIsAdmin);
+
+        if (reservaRepository.existsByVehiculoId(id)) {
+            throw new ValidationException("No se puede eliminar un vehiculo que tiene reservas asociadas.");
+        }
+
+        vehiculoRepository.delete(vehiculo);
+    }
+
+    private void verificarPropietario(Vehiculo vehiculo, String requesterEmail, boolean requesterIsAdmin) {
+        if (requesterIsAdmin) {
+            return;
+        }
+
+        AppUser dueño = vehiculo.getVisitante().getAppUser();
+        if (dueño == null || !dueño.getEmail().equals(requesterEmail)) {
+            throw new AccessDeniedException("No podes modificar un vehiculo que no es tuyo.");
+        }
     }
 
     private Vehiculo buscarPorId(UUID id) {
