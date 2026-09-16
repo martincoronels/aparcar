@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
+import org.springframework.security.access.AccessDeniedException;
 
 import java.util.Arrays;
 import java.util.List;
@@ -149,5 +150,16 @@ public class DevExceptionHandler {
 
     private String getExceptionMessage(ConstraintViolation<?> ex) {
         return Arrays.stream(ex.getPropertyPath().toString().split("\\.")).toList().getLast() + ": " + ex.getMessage();
+    }
+
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<ErrorResponseDto> handleAccessDeniedException(AccessDeniedException e) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(
+                new ErrorResponseDto(
+                        HttpStatus.FORBIDDEN.value(),
+                        e.getMessage(),
+                        null
+                )
+        );
     }
 }

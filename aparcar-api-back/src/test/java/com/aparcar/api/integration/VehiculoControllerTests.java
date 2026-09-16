@@ -52,6 +52,7 @@ public class VehiculoControllerTests {
     void tearDown() {
         vehiculoRepository.deleteAll();
         visitanteRepository.deleteAll();
+        appUserRepository.deleteAll();
     }
 
     private AppUser crearAppUser(String email) {
@@ -64,10 +65,11 @@ public class VehiculoControllerTests {
         return appUserRepository.save(user);
     }
 
-    private Visitante crearVisitante(String documento) {
+    private Visitante crearVisitante(String documento, AppUser appUser) {
         Visitante visitante = new Visitante();
         visitante.setNombre("Juan Perez");
         visitante.setDocumento(documento);
+        visitante.setAppUser(appUser);
         return visitanteRepository.save(visitante);
     }
 
@@ -98,7 +100,7 @@ public class VehiculoControllerTests {
     @WithMockUser(authorities = "USER")
     @DisplayName("[Caja negra] POST /api/v1/vehiculos devuelve 400 si la patente tiene formato invalido")
     void crearDevuelve400SiPatenteTieneFormatoInvalido() throws Exception {
-        Visitante visitante = crearVisitante("30111222");
+        Visitante visitante = crearVisitante("30111222", null);
         var context = getContext();
 
         mockMvc.perform(post("/api/v1/vehiculos")
@@ -125,7 +127,7 @@ public class VehiculoControllerTests {
     @WithMockUser(authorities = "USER")
     @DisplayName("[Caja negra] POST /api/v1/vehiculos devuelve 201 y normaliza la patente a mayusculas")
     void crearDevuelve201YNormalizaPatente() throws Exception {
-        Visitante visitante = crearVisitante("30111222");
+        Visitante visitante = crearVisitante("30111222", null);
         var context = getContext();
 
         mockMvc.perform(post("/api/v1/vehiculos")
@@ -141,7 +143,7 @@ public class VehiculoControllerTests {
     @WithMockUser(authorities = "USER")
     @DisplayName("[Caja negra] POST /api/v1/vehiculos devuelve 400 si la patente ya existe")
     void crearDevuelve400SiPatenteYaExiste() throws Exception {
-        Visitante visitante = crearVisitante("30111222");
+        Visitante visitante = crearVisitante("30111222", null);
         crearVehiculo("ABC123", VehiculoTipo.AUTO, visitante);
         var context = getContext();
 
@@ -158,8 +160,8 @@ public class VehiculoControllerTests {
     @WithMockUser(authorities = "USER")
     @DisplayName("[Caja negra] GET /api/v1/vehiculos sin filtro devuelve todos los vehiculos")
     void listarSinFiltroDevuelveTodos() throws Exception {
-        Visitante v1 = crearVisitante("30111222");
-        Visitante v2 = crearVisitante("30111333");
+        Visitante v1 = crearVisitante("30111222", null);
+        Visitante v2 = crearVisitante("30111333", null);
         crearVehiculo("AAA111", VehiculoTipo.AUTO, v1);
         crearVehiculo("BBB222", VehiculoTipo.MOTO, v2);
         var context = getContext();
@@ -173,8 +175,8 @@ public class VehiculoControllerTests {
     @WithMockUser(authorities = "USER")
     @DisplayName("[Caja negra] GET /api/v1/vehiculos?visitanteId filtra solo los de ese visitante")
     void listarConFiltroDevuelveSoloLosDeEseVisitante() throws Exception {
-        Visitante v1 = crearVisitante("30111222");
-        Visitante v2 = crearVisitante("30111333");
+        Visitante v1 = crearVisitante("30111222", null);
+        Visitante v2 = crearVisitante("30111333", null);
         crearVehiculo("AAA111", VehiculoTipo.AUTO, v1);
         crearVehiculo("BBB222", VehiculoTipo.MOTO, v2);
         var context = getContext();
@@ -201,7 +203,7 @@ public class VehiculoControllerTests {
     @WithMockUser(authorities = "USER")
     @DisplayName("[Caja negra] GET /api/v1/vehiculos/{id} devuelve 200 con el vehiculo cuando existe")
     void obtenerPorIdDevuelve200CuandoExiste() throws Exception {
-        Visitante visitante = crearVisitante("30111222");
+        Visitante visitante = crearVisitante("30111222", null);
         Vehiculo vehiculo = crearVehiculo("ABC123", VehiculoTipo.AUTO, visitante);
         var context = getContext();
 
@@ -214,8 +216,9 @@ public class VehiculoControllerTests {
     @WithMockUser(username = "dueño@test.com", authorities = "USER")
     @DisplayName("[Caja negra] PUT /api/v1/vehiculos/{id} devuelve 403 si no es el dueño")
     void editarDevuelve403SiNoEsElDueño() throws Exception {
-        AppUser dueño = crearAppUser("otro@test.com");
-        Visitante visitante = crearVisitante("30111222");
+        // El vehiculo pertenece a "otro@test.com"; quien hace el request es "dueño@test.com" -> no coinciden.
+        AppUser propietarioReal = crearAppUser("otro@test.com");
+        Visitante visitante = crearVisitante("30111222", propietarioReal);
         Vehiculo vehiculo = crearVehiculo("ABC123", VehiculoTipo.AUTO, visitante);
         var context = getContext();
 
@@ -230,8 +233,9 @@ public class VehiculoControllerTests {
     @WithMockUser(username = "dueño@test.com", authorities = "USER")
     @DisplayName("[Caja negra] PUT /api/v1/vehiculos/{id} permite al dueño editar su vehiculo")
     void editarPermiteAlDueñoEditarSuVehiculo() throws Exception {
+        // El email del AppUser tiene que coincidir con el username del @WithMockUser.
         AppUser dueño = crearAppUser("dueño@test.com");
-        Visitante visitante = crearVisitante("30111222");
+        Visitante visitante = crearVisitante("30111222", dueño);
         Vehiculo vehiculo = crearVehiculo("ABC123", VehiculoTipo.AUTO, visitante);
         var context = getContext();
 
@@ -247,7 +251,7 @@ public class VehiculoControllerTests {
     @WithMockUser(authorities = "ADMIN")
     @DisplayName("[Caja negra] DELETE /api/v1/vehiculos/{id} devuelve 204 cuando no tiene reservas")
     void eliminarDevuelve204CuandoNoTieneReservas() throws Exception {
-        Visitante visitante = crearVisitante("30111222");
+        Visitante visitante = crearVisitante("30111222", null);
         Vehiculo vehiculo = crearVehiculo("ABC123", VehiculoTipo.AUTO, visitante);
         var context = getContext();
 

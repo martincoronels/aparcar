@@ -9,6 +9,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.security.access.AccessDeniedException;
 
 import java.util.List;
 
@@ -63,5 +64,16 @@ public class ProdExceptionHandler {
                         "Validation failed",
                         errors
                 ));
+    }
+
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<ErrorResponseDto> handleAccessDeniedException(AccessDeniedException e) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(
+                new ErrorResponseDto(
+                        HttpStatus.FORBIDDEN.value(),
+                        e.getMessage(),
+                        null
+                )
+        );
     }
 }
