@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useAuthStore } from "../store/authStore";
-import Home from "../app/page.js";
+import Home from "../app/page.jsx";
 
 const mockReplace = vi.fn();
 
