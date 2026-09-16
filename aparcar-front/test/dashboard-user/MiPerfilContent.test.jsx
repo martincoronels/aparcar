@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import api from "@/app/api";
 
@@ -213,7 +213,7 @@ describe("MiPerfilContent", () => {
     expect(toastSuccessMock).toHaveBeenCalledWith("Tus datos se actualizaron correctamente");
   });
 
-  it("edita un vehiculo existente con PUT /api/v1/vehiculos/{id}", async () => {
+    it("edita un vehiculo existente con PUT /api/v1/vehiculos/{id}", async () => {
     const putMock = vi.fn().mockResolvedValue({ data: {} });
     api.put = putMock;
     getMock.mockImplementation((url) => {
@@ -222,12 +222,14 @@ describe("MiPerfilContent", () => {
       if (url === "/api/v1/vehiculos") return Promise.resolve({ data: [{ id: "veh1", patente: "ABC123", tipo: "AUTO" }] });
       return Promise.reject(new Error("URL no mockeada"));
     });
+
     const user = userEvent.setup();
     render(<MiPerfilContent />);
-    await screen.findByText("ABC123");
+    const patente = await screen.findByText("ABC123");
+    const fila = patente.closest("li");
 
-    await user.click(screen.getByRole("button", { name: /editar/i }));
-    await user.click(screen.getByRole("button", { name: /guardar/i }));
+    await user.click(within(fila).getByRole("button", { name: /^editar$/i }));
+    await user.click(within(fila).getByRole("button", { name: /^guardar$/i }));
 
     await waitFor(() =>
       expect(putMock).toHaveBeenCalledWith("/api/v1/vehiculos/veh1", { patente: "ABC123", tipo: "AUTO" })
