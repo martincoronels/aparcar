@@ -12,7 +12,7 @@ const { getMock, postMock, toastSuccessMock, toastErrorMock } = vi.hoisted(() =>
 vi.mock("@/app/api", () => ({ default: { get: getMock, post: postMock } }));
 vi.mock("sonner", () => ({ toast: { success: toastSuccessMock, error: toastErrorMock } }));
 
-const { default: ReservasContent } = await import("@/app/dashboard-user/ReservasContent");
+const { default: ReservasContent } = await import("@/components/ReservasContent");
 
 const visitante = (overrides = {}) => ({ id: "v1", nombre: "Juan Perez", documento: "1", ...overrides });
 const vehiculo = (overrides = {}) => ({ id: "veh1", patente: "ABC123", tipo: "AUTO", visitanteId: "v1", ...overrides });

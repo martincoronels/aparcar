@@ -33,7 +33,14 @@ function EstadoBadge({ estado }) {
   );
 }
 
-export default function ReservasContent() {
+// Lo usan los dos dashboards: el USER para reservar con su propio vehículo, y
+// el ADMIN para reservar en nombre de cualquier visitante ya cargado. La lógica
+// es la misma en los dos casos porque la búsqueda es por patente sobre el
+// catálogo completo, sin filtrar por la cuenta que está mirando.
+//
+// `onReservaCreada` es opcional: el dashboard-admin lo usa para refrescar la
+// cuadrícula de ocupación, que vive en un componente hermano.
+export default function ReservasContent({ onReservaCreada }) {
   const [visitantes, setVisitantes] = useState([]);
   const [vehiculos, setVehiculos] = useState([]);
   const [cocheras, setCocheras] = useState([]);
@@ -82,8 +89,9 @@ export default function ReservasContent() {
   };
 
   // Se re-llama al enfocar el campo de patente (además de al montar), porque
-  // el vehículo puede haberse cargado recién en "Mis datos", arriba de esta
-  // misma página, y esta lista ya se había pedido antes de que existiera.
+  // el vehículo puede haberse cargado recién arriba en esta misma página
+  // ("Mis datos" en el dashboard USER, "Nuevo visitante" en el ADMIN) y esta
+  // lista ya se había pedido antes de que existiera.
   const cargarCatalogos = () => {
     api
       .get("/api/v1/visitantes")
@@ -129,6 +137,7 @@ export default function ReservasContent() {
       reset({ patente: "", cocheraId: "", fecha: today() });
       setCocheras([]);
       cargarReservas();
+      onReservaCreada?.();
     } catch (err) {
       toast.error(err.response?.data?.message || "No se pudo crear la reserva.");
     }
@@ -147,9 +156,9 @@ export default function ReservasContent() {
         <form className="space-y-6" onSubmit={handleSubmit(onSubmit)}>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className={labelClasses} htmlFor="patente">Patente</label>
+              <label className={labelClasses} htmlFor="reserva-patente">Patente</label>
               <input
-                id="patente"
+                id="reserva-patente"
                 list="patentes-registradas"
                 {...register("patente")}
                 onFocus={cargarCatalogos}
@@ -176,9 +185,9 @@ export default function ReservasContent() {
             </div>
 
             <div>
-              <label className={labelClasses} htmlFor="fecha">Fecha</label>
+              <label className={labelClasses} htmlFor="reserva-fecha">Fecha</label>
               <input
-                id="fecha"
+                id="reserva-fecha"
                 type="date"
                 min={today()}
                 {...register("fecha")}
@@ -188,9 +197,9 @@ export default function ReservasContent() {
             </div>
 
             <div className="sm:col-span-2">
-              <label className={labelClasses} htmlFor="cocheraId">Cochera</label>
+              <label className={labelClasses} htmlFor="reserva-cocheraId">Cochera</label>
               <select
-                id="cocheraId"
+                id="reserva-cocheraId"
                 {...register("cocheraId")}
                 className={inputClasses}
                 disabled={!vehiculoEncontrado || !fecha}

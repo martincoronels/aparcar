@@ -70,7 +70,10 @@ const COLUMN_ORDER = [
   { tipo: "ACCESIBLE", label: "Accesibles", Icon: AccessibleIcon },
 ];
 
-export default function EstadoCocherasGrid() {
+// `refreshKey` permite que el padre fuerce una recarga: cada vez que cambia,
+// se vuelve a pedir la ocupación. Se usa al crear una reserva, para que la
+// cuadrícula no quede mostrando la cochera como libre hasta recargar la página.
+export default function EstadoCocherasGrid({ refreshKey = 0 }) {
   const [cocheras, setCocheras] = useState([]);
   const [ocupadasIds, setOcupadasIds] = useState(new Set());
   const [loading, setLoading] = useState(true);
@@ -105,7 +108,7 @@ export default function EstadoCocherasGrid() {
 
   useEffect(() => {
     cargar();
-  }, []);
+  }, [refreshKey]);
 
   const columnas = COLUMN_ORDER
     .map((columna) => ({ ...columna, cocheras: cocheras.filter((c) => c.tipo === columna.tipo) }))

@@ -69,3 +69,20 @@ jobs:
 
       - name: Build
         run: npm run build
+
+  # Job agregador para solucionar el bloqueo en los PRs
+  ci-status:
+    needs: [changes, backend, frontend]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check overall CI status
+        run: |
+          backend_result="${{ needs.backend.result }}"
+          frontend_result="${{ needs.frontend.result }}"
+         
+          if [ "$backend_result" = "failure" ] || [ "$frontend_result" = "failure" ]; then
+            echo "Uno o más jobs fallaron."
+            exit 1
+          fi
+          echo "Todos los jobs necesarios pasaron o se skipearon correctamente."
