@@ -70,7 +70,19 @@ El workflow usa `dorny/paths-filter` para detectar qué mitad del repo cambió y
 - **backend** (si cambió `aparcar-api-back/**`): JDK 21 Temurin con caché de Maven, y `mvn -B clean install` — que compila y corre los 160 tests.
 - **frontend** (si cambió `aparcar-front/**`): Node 24 con caché de npm, y después `npm ci`, `npm run lint`, `npm test` y `npm run build`.
 
+Los dos filtros incluyen además `.github/workflows/**` ✏️: si se toca el propio pipeline, corren las dos suites completas. Sin eso, un PR que solo modifica `ci.yml` no ejecutaba ningún check y el cambio al pipeline se mergeaba sin validarse nunca.
+
 Es decir: si un PR rompe un test, el lint o el build, se ve antes del merge.
+
+### Por qué la condición está en los pasos y no en el job ✏️
+
+Los dos jobs **corren siempre**; lo que se saltea son los pasos de adentro. Es a propósito.
+
+Antes la condición estaba a nivel de job (`if:` al lado de `needs:`). Cuando la mitad correspondiente no cambiaba, GitHub marcaba el job como *skipped*, y **un job salteado nunca reporta conclusión**. Si ese check figura como *required* en la protección de rama, el PR se queda con "Expected — waiting for status to be reported" y no se puede mergear nunca. Es justo lo que pasaba con `CI / backend` en un PR que solo tocaba el frontend.
+
+Con la condición en los pasos, el job arranca igual, reporta verde en segundos cuando no hay nada que hacer, y no gasta el build completo. El nombre del check no cambia, así que no hay que tocar la configuración de la rama protegida.
+
+También se agregó un bloque `permissions` explícito: en eventos `pull_request`, `dorny/paths-filter` le pide a la API de GitHub la lista de archivos del PR, y sin `pull-requests: read` el job `changes` falla — y si ese falla, se saltean los dos que dependen de él.
 
 ---
 
