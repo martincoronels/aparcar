@@ -1,8 +1,7 @@
 import Link from "next/link";
 import { requireAuth } from "@/utils/serverAuth";
 import LogoutButton from "@/components/LogoutButton";
-import EstadoCocherasGrid from "./EstadoCocherasGrid";
-import VisitantesContent from "./VisitantesContent";
+import PanelOperativo from "./PanelOperativo";
 
 export default async function DashboardAdminPage() {
   // Validación de rol del lado del servidor: si no tenés el rol ADMIN,
@@ -28,8 +27,7 @@ export default async function DashboardAdminPage() {
           <LogoutButton />
         </div>
 
-        <EstadoCocherasGrid />
-        <VisitantesContent />
+        <PanelOperativo />
       </div>
     </div>
   );

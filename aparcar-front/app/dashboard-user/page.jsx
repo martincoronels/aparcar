@@ -1,7 +1,7 @@
 import { requireAuth } from "@/utils/serverAuth";
 import LogoutButton from "@/components/LogoutButton";
 import MiPerfilContent from "./MiPerfilContent";
-import ReservasContent from "./ReservasContent";
+import ReservasContent from "@/components/ReservasContent";
 
 export default async function DashboardUserPage() {
   // Validación de rol del lado del servidor: si no tenés el rol USER,

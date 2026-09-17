@@ -4,8 +4,46 @@ Referencia de qué hace cada archivo del proyecto, para no perderse en el repo. 
 
 Convenciones:
 
-- 🆕 = archivo agregado durante el desarrollo actual.
-- ✏️ = archivo existente que fue modificado.
+- 🆕 = archivo agregado desde la versión anterior de este documento.
+- ✏️ = archivo existente que fue modificado desde entonces.
+
+---
+
+## Qué cambió en esta tanda
+
+Resumen de lo nuevo, para no tener que leer todo el archivo buscando las marcas.
+
+**Integración continua**
+
+- `.github/workflows/ci.yml` 🆕: GitHub Actions corre los checks en cada pull request a `main` o `dev`.
+
+**Seguridad**
+
+- ⚠️ `DevAuthenticationProvider` **ahora valida la contraseña con BCrypt**, igual que producción. Antes autenticaba a cualquiera con solo existir el email. Si venías probando con contraseñas inventadas, ya no funciona.
+- `CustomAccessDeniedHandler` 🆕: los 403 ahora devuelven JSON con el mismo formato que los 401, en vez de una página de error de Spring.
+
+**Gestión de datos propios (dashboard USER)**
+
+- `PUT /api/v1/visitantes/me`: el visitante edita su teléfono y su email.
+- `PUT /api/v1/vehiculos/{id}` y `DELETE /api/v1/vehiculos/{id}`: editar y borrar vehículos, con control de propietario (un USER solo toca los suyos; un ADMIN, todos). No se puede borrar un vehículo con reservas asociadas.
+
+**Frontend**
+
+- `app/page.jsx` 🆕 reemplaza a `app/page.js`: landing pública, con redirección automática al dashboard si ya hay sesión.
+- `app/not-found.js` 🆕: página 404 propia.
+- `components/LogoutButton.jsx` 🆕: botón de cerrar sesión, presente en ambos dashboards.
+- `MiPerfilContent.jsx` ✏️: pasó de solo cargar datos a gestionarlos (editar perfil, editar y eliminar vehículos).
+
+**Bugfix: no se podía reservar desde el panel admin**
+
+- El formulario de reservas vivía solo en `app/dashboard-user/`, una ruta protegida con `requireAuth(["USER"])`. Una cuenta ADMIN quedaba sin ningún lugar desde donde crear una reserva: el formulario del panel admin era el de alta de visitante, que nunca creó reservas.
+- `ReservasContent.jsx` se movió a `components/` 🆕, porque ahora lo usan los dos dashboards, y se agregó al panel admin.
+- De paso: la cuadrícula de ocupación se recarga al crear una reserva. Antes cargaba una sola vez al montarse, así que la cochera seguía viéndose libre hasta refrescar la página — el mismo síntoma por otra causa.
+- No hizo falta tocar el backend: `/api/v1/reservas/**` ya pedía solo estar autenticado, y `DashboardAccessSecurityTests` ya cubría que un ADMIN puede usarlo.
+
+**Documentación**
+
+- `AparcAR-Manual-Completo.pdf` 🆕: manual de 46 páginas que explica el proyecto de punta a punta para alguien que nunca lo vio.
 
 ---
 
@@ -16,7 +54,23 @@ Convenciones:
 | `.gitignore` | Ignora `*.class`, `*.jar`, logs, etc. a nivel de todo el repo |
 | `README.md` | Guía de instalación y ejecución del proyecto completo (front + back) |
 | `ARCHIVOS.md` | Este archivo: mapa general de la estructura del proyecto |
-| `TESTS.md` 🆕 | Índice de qué prueba cada archivo de test, front y back, caso por caso |
+| `TESTS.md` ✏️ | Índice de qué prueba cada archivo de test, front y back, caso por caso (35 archivos, 248 tests) |
+| `AparcAR-Manual-Completo.pdf` 🆕 | Manual de 46 páginas: el dominio, las tecnologías usadas una por una, el árbol de carpetas comentado, los endpoints, la seguridad, la base de datos, Docker y el testing. Pensado para alguien que nunca vio el código |
+
+---
+
+## `.github/workflows/` 🆕
+
+| Archivo | Qué hace |
+|---|---|
+| `ci.yml` 🆕 | Pipeline de GitHub Actions. Corre en cada pull request contra `main` o `dev` |
+
+El workflow usa `dorny/paths-filter` para detectar qué mitad del repo cambió y correr solo esa:
+
+- **backend** (si cambió `aparcar-api-back/**`): JDK 21 Temurin con caché de Maven, y `mvn -B clean install` — que compila y corre los 160 tests.
+- **frontend** (si cambió `aparcar-front/**`): Node 24 con caché de npm, y después `npm ci`, `npm run lint`, `npm test` y `npm run build`.
+
+Es decir: si un PR rompe un test, el lint o el build, se ve antes del merge.
 
 ---
 
@@ -91,8 +145,8 @@ Configuración general de Spring.
 | `SchedulingConfig.java` | Configura tareas `@Scheduled` |
 | `WebClientConfig.java` | Configura el bean de `WebClient` |
 | `WebConfig.java` | Maneja headers `X-Forwarded-*` |
-| `middleware/DevExceptionHandler.java` | Convierte excepciones a respuestas JSON detalladas en desarrollo |
-| `middleware/ProdExceptionHandler.java` | Manejo de errores para producción |
+| `middleware/DevExceptionHandler.java` ✏️ | Convierte excepciones a respuestas JSON detalladas en desarrollo. Agregado el handler de `AccessDeniedException` 🆕, que devuelve 403 con el mensaje del service (ej. "No podés modificar un vehículo que no es tuyo") |
+| `middleware/ProdExceptionHandler.java` ✏️ | Manejo de errores para producción, con el mismo handler de `AccessDeniedException` |
 
 ---
 
@@ -106,23 +160,48 @@ Endpoints REST de la aplicación.
 | `CocheraController.java` | Gestión de cocheras y consulta de cocheras disponibles |
 | `ReservaController.java` | Alta y consulta de reservas |
 | `UserController.java` ✏️ | Gestión ADMIN de usuarios: activar, listar inactivos, eliminar, listar todos y editar |
-| `VehiculoController.java` | Alta y consulta de vehículos |
-| `VisitanteController.java` ✏️ | Alta y consulta de visitantes, más `GET /me` y `POST /me` 🆕: el propio visitante (logueado) consulta o carga su perfil sin pasar por un admin |
+| `VehiculoController.java` ✏️ | Alta y consulta de vehículos, más `PUT /{id}` y `DELETE /{id}` 🆕. Ambos reciben el `Authentication` y le pasan al service el email del que pide y si es ADMIN, para que el service decida si tiene permiso |
+| `VisitanteController.java` ✏️ | Alta y consulta de visitantes, más `GET /me`, `POST /me` y ahora `PUT /me` 🆕: el propio visitante (logueado) consulta, carga y edita su perfil sin pasar por un admin. `/me` está declarado **antes** que `/{id}` a propósito, para que `"me"` no se intente parsear como UUID |
 
-### Endpoints de gestión de usuarios
+### Tabla completa de endpoints
 
-Actualmente la administración de usuarios utiliza:
+Todo lo que el backend sabe hacer hoy. La columna "Quién puede" sale de `DevSecurityConfig` / `ProdSecurityConfig`.
 
-```text
-POST   /register
-GET    /api/v1/usuarios
-PUT    /api/v1/usuarios/{id}
-POST   /users/activate
-GET    /users/inactive
-DELETE /users
-```
+| Método y ruta | Qué hace | Quién puede |
+|---|---|---|
+| `POST /register` | Crea una cuenta (nace INACTIVA y con rol USER) | ADMIN |
+| `POST /login` | Valida credenciales por HTTP Basic y devuelve el JWT en el header `Authorization` | Autenticable |
+| `POST /forgot-password` | Manda un código OTP al mail | Público |
+| `POST /reset-password` | Cambia la contraseña usando el OTP | Público |
+| `POST /users/activate` | Activa una cuenta | ADMIN |
+| `GET /users/inactive` | Lista los emails sin activar | ADMIN |
+| `DELETE /users` | Elimina una cuenta (no podés borrarte a vos mismo) | ADMIN |
+| `GET /api/v1/usuarios` | Lista todas las cuentas, sin exponer el password | ADMIN |
+| `PUT /api/v1/usuarios/{id}` | Edita nombre, teléfono y authorities | ADMIN |
+| `POST /api/v1/cocheras` | Crea una cochera (número único) | ADMIN |
+| `GET /api/v1/cocheras` | Lista todas las cocheras | ADMIN |
+| `GET /api/v1/cocheras/{id}` | Una cochera por id | ADMIN |
+| `PUT /api/v1/cocheras/{id}` | Edita; al deshabilitarla, cancela sus reservas CONFIRMADAS | ADMIN |
+| `DELETE /api/v1/cocheras/{id}` | Borra; falla con 400 si tiene reservas | ADMIN |
+| `GET /api/v1/cocheras/disponibles` | Cocheras libres para una fecha y tipo de vehículo | **Público** |
+| `POST /api/v1/visitantes` | Alta de visitante (documento único) | Autenticado |
+| `GET /api/v1/visitantes` | Lista de visitantes | Autenticado |
+| `GET /api/v1/visitantes/{id}` | Un visitante por id | Autenticado |
+| `GET /api/v1/visitantes/me` | Mi propio perfil de visitante | Autenticado |
+| `POST /api/v1/visitantes/me` | Cargo mi propio perfil (una sola vez) | Autenticado |
+| `PUT /api/v1/visitantes/me` 🆕 | Edito mi teléfono y mi email | Autenticado |
+| `POST /api/v1/vehiculos` | Alta de vehículo (patente única, normalizada a mayúsculas) | Autenticado |
+| `GET /api/v1/vehiculos` | Lista, con filtro opcional `?visitanteId=` | Autenticado |
+| `GET /api/v1/vehiculos/{id}` | Un vehículo por id | Autenticado |
+| `PUT /api/v1/vehiculos/{id}` 🆕 | Edita patente y tipo | Dueño o ADMIN |
+| `DELETE /api/v1/vehiculos/{id}` 🆕 | Borra; falla con 400 si tiene reservas | Dueño o ADMIN |
+| `POST /api/v1/reservas` | Crea la reserva aplicando las reglas de negocio | Autenticado |
+| `GET /api/v1/reservas` | Lista todas las reservas | Autenticado |
+| `GET /api/v1/reservas/{id}` | Una reserva por id | Autenticado |
+| `GET /docs` | Swagger UI: la API documentada e interactiva | Público |
+| `GET /actuator/health` | Chequeo de salud del servicio | Público |
 
-`POST /register`, `GET /api/v1/usuarios`, `PUT /api/v1/usuarios/{id}` y los endpoints `/users/**` están protegidos para rol `ADMIN`.
+"Dueño o ADMIN" no lo resuelve Spring Security: lo resuelve `VehiculoService.verificarPropietario()`, comparando el email del JWT contra el `appUser` del visitante dueño del vehículo. Si no coincide y no es ADMIN, lanza `AccessDeniedException` → 403.
 
 ---
 
@@ -160,6 +239,8 @@ Objetos usados para entrada y salida de información de la API.
 | `VisitanteRequestDto.java` | Datos recibidos para crear un visitante |
 | `VisitanteResponseDto.java` | Datos devueltos de un visitante |
 | `VehiculoRequestDto.java` | Datos recibidos para crear un vehículo |
+| `VehiculoUpdateDto.java` 🆕 | Body de `PUT /api/v1/vehiculos/{id}`: patente y tipo. Valida el formato de patente con regex (`AAA000` o `AA000AA`) |
+| `VisitanteUpdateDto.java` 🆕 | Body de `PUT /api/v1/visitantes/me`: solo teléfono y email. El nombre y el documento no se editan desde acá |
 | `VehiculoResponseDto.java` | Datos devueltos de un vehículo |
 | `CocheraRequestDto.java` | Datos recibidos para crear una cochera |
 | `CocheraResponseDto.java` | Datos devueltos de una cochera |
@@ -243,7 +324,7 @@ Acceso a datos usando Spring Data JPA.
 | `AppUserRepository.java` ✏️ | Acceso a `AppUser`; utiliza `UUID` como tipo de ID y permite buscar usuarios por email |
 | `CocheraRepository.java` | Acceso a cocheras |
 | `OneTimePasswordRepository.java` | Acceso a códigos OTP |
-| `ReservaRepository.java` | Acceso a reservas y consultas relacionadas con disponibilidad |
+| `ReservaRepository.java` ✏️ | Acceso a reservas y consultas relacionadas con disponibilidad. Agregado `existsByVehiculoId` 🆕, que usa `VehiculoService.eliminar` para no borrar un vehículo con reservas |
 | `VehiculoRepository.java` | Acceso a vehículos |
 | `VisitanteRepository.java` | Acceso a visitantes |
 
@@ -256,29 +337,44 @@ Autenticación y autorización.
 | Archivo | Qué hace |
 |---|---|
 | `AppUserDetailsService.java` | Carga un `AppUser` por email para Spring Security |
-| `CustomBasicAuthenticationEntryPoint.java` | Respuesta devuelta cuando una ruta requiere autenticación |
-| `authenticationProvider/DevAuthenticationProvider.java` | Autenticación de desarrollo |
+| `CustomBasicAuthenticationEntryPoint.java` | Respuesta devuelta cuando una ruta requiere autenticación (401) |
+| `CustomAccessDeniedHandler.java` 🆕 | Respuesta devuelta cuando el usuario está autenticado pero no tiene el rol (403). Devuelve JSON con el mismo formato que el 401 (`timestamp`, `status`, `error`, `message`, `path`, `client_ip`) y deja un `log.warn` con la IP. Se registra en las dos security configs con `.exceptionHandling(...)` |
+| `authenticationProvider/DevAuthenticationProvider.java` ✏️ | Autenticación de desarrollo y test. **Cambio importante: ahora valida la contraseña con BCrypt**, igual que producción. Antes autenticaba con cualquier contraseña siempre que el email existiera. Además traduce `UsernameNotFoundException` a `BadCredentialsException`, para no filtrar qué emails están registrados |
 | `authenticationProvider/ProdAuthenticationProvider.java` | Autenticación de producción con validación de password |
-| `securityConfig/DevSecurityConfig.java` ✏️ | Configuración de seguridad de desarrollo; administración y alta de usuarios requieren `ADMIN` |
-| `securityConfig/ProdSecurityConfig.java` ✏️ | Configuración equivalente para producción/test |
+| `securityConfig/DevSecurityConfig.java` ✏️ | Configuración de seguridad de desarrollo: la tabla de permisos, CORS para `localhost:*`, sesión STATELESS, CSRF desactivado, y el registro de los filtros. Ahora también registra el `CustomAccessDeniedHandler` |
+| `securityConfig/ProdSecurityConfig.java` ✏️ | Configuración equivalente para producción/test, con el mismo handler de 403 |
 
-### Seguridad de usuarios
+### Las reglas de acceso, tal como están escritas
 
-Los endpoints:
+El orden importa: Spring Security evalúa de arriba hacia abajo y se queda con **la primera regla que coincide**.
 
-```text
-/users/**
-/api/v1/usuarios/**
-/register
+```java
+// 1) PÚBLICO. Va primero a propósito: si no, /disponibles
+//    caería en la regla de ADMIN de /api/v1/cocheras/** de abajo.
+.requestMatchers("/api/v1/cocheras/disponibles",
+                 "/forgot-password",
+                 "/reset-password",
+                 "/actuator/health").permitAll()
+
+// 2) SOLO ADMIN
+.requestMatchers("/users/**",
+                 "/api/v1/usuarios/**",
+                 "/register",
+                 "/api/v1/cocheras/**").hasAuthority("ADMIN")
+
+// 3) CUALQUIER USUARIO AUTENTICADO (los usan los dos dashboards)
+.requestMatchers("/api/v1/reservas/**",
+                 "/api/v1/vehiculos/**",
+                 "/api/v1/visitantes/**",
+                 "/login").authenticated()
+
+// 4) TODO LO DEMÁS (Swagger, estáticos)
+.requestMatchers("/**").permitAll()
 ```
 
-requieren:
+El login sigue siendo HTTP Basic y devuelve un JWT válido 8 horas, con el email y un claim `authorities` que es **un string separado por comas** (`"USER,ADMIN"`), no un array — por eso el frontend hace `.split(",")`.
 
-```text
-authority = ADMIN
-```
-
-El login continúa disponible para usuarios autenticables mediante HTTP Basic y genera un JWT que contiene las authorities del usuario.
+Sobre los códigos de error: **401** significa "no sé quién sos" (falta el token, venció, o la firma no da) y lo produce `CustomBasicAuthenticationEntryPoint`. **403** significa "sé quién sos y no te corresponde" y lo produce `CustomAccessDeniedHandler` 🆕. Los dos devuelven JSON con el mismo formato.
 
 ---
 
@@ -292,8 +388,8 @@ Lógica de negocio.
 | `ICocheraService.java` / `impl/CocheraService.java` | Gestión y disponibilidad de cocheras |
 | `IReservaService.java` / `impl/ReservaService.java` | Lógica de reservas y validación de compatibilidad/disponibilidad |
 | `IUserService.java` / `impl/UserService.java` ✏️ | Gestión administrativa de usuarios: listar, editar, activar y eliminar. Al eliminar, desvincula primero el visitante propio de la cuenta (si tiene uno) antes de borrarla |
-| `IVehiculoService.java` / `impl/VehiculoService.java` | Gestión de vehículos |
-| `IVisitanteService.java` / `impl/VisitanteService.java` ✏️ | Gestión de visitantes, más `obtenerPropio(email)` / `crearPropio(email, dto)` 🆕: el visitante carga sus propios datos vinculados a su cuenta |
+| `IVehiculoService.java` / `impl/VehiculoService.java` ✏️ | Gestión de vehículos. Agregados `editar` y `eliminar` 🆕, los dos con `verificarPropietario`: un ADMIN pasa siempre; un USER solo si el `appUser` del visitante dueño coincide con el email del que pide, y si no, `AccessDeniedException`. `eliminar` además bloquea si el vehículo tiene reservas |
+| `IVisitanteService.java` / `impl/VisitanteService.java` ✏️ | Gestión de visitantes, más `obtenerPropio(email)`, `crearPropio(email, dto)` y ahora `actualizarPropio(email, dto)` 🆕: el visitante carga y edita sus propios datos, vinculados a su cuenta |
 
 ### Comportamiento actual de alta de usuario
 
@@ -305,6 +401,8 @@ isActive: false
 ```
 
 Un administrador puede posteriormente modificar sus authorities, activarlos o eliminarlos desde la gestión de usuarios.
+
+> ⚠️ **Ojo si venías desarrollando de antes:** el perfil `dev` ya no autentica con cualquier contraseña. `DevAuthenticationProvider` ahora compara contra el hash BCrypt, igual que producción. Para entrar hace falta la contraseña real con la que se creó la cuenta.
 
 ---
 
@@ -354,20 +452,20 @@ Convención de esta sección: 🆕 = clase de test agregada al sumar cobertura d
 | `integration/AuthControllerTests.java` ✏️ | Tests de `/register`, `/login`, `/forgot-password`, `/reset-password`. Actualicé `registerValidatesInput` y `registerCreatesInactiveUser` porque `/register` pasó a requerir rol ADMIN (antes eran públicos y quedaron rotos por ese cambio); agregué los casos 401 (anónimo) y 403 (rol USER) |
 | `integration/CocheraControllerTests.java` | **Caja negra.** CRUD completo de `/api/v1/cocheras`: seguridad (401/403), validaciones, alta/edición/borrado y `/disponibles` de punta a punta |
 | `integration/DashboardAccessSecurityTests.java` 🆕 | **Caja negra.** Matriz de qué rol puede pegarle a qué endpoint: `/api/v1/visitantes`, `/vehiculos` y `/reservas` exigen solo estar autenticado (los usan ambos dashboards, sin importar el rol), `/api/v1/usuarios` exige ADMIN, `/api/v1/cocheras/disponibles` es público |
-| `integration/LoginFlowTests.java` 🆕 | **Caja negra**, contra un servidor real embebido (no MockMvc — ver el porqué en el comentario de la clase). Login real con HTTP Basic: verifica el JWT devuelto (email, authorities), 401 con email inexistente, y que en dev/test cualquier contraseña autentica |
+| `integration/LoginFlowTests.java` ✏️ | **Caja negra**, contra un servidor real embebido (no MockMvc — ver el porqué en el comentario de la clase). Login real con HTTP Basic: verifica el JWT devuelto (email, authorities) y los 401. Actualizado: ahora comprueba que **una contraseña incorrecta devuelve 401 también en dev/test**, porque el `DevAuthenticationProvider` pasó a validarla |
 | `integration/ReservaControllerTests.java` 🆕 | **Caja negra.** Reglas de negocio de `/api/v1/reservas` contra DB real (no mocks): vehículo que no pertenece al visitante, incompatibilidad de tipos, doble reserva del mismo día, cochera ACCESIBLE acepta cualquier vehículo |
 | `integration/UserControllerTests.java` ✏️ | Tests de `/users/**` y `/api/v1/usuarios/**`. Agregué los casos de `PUT /api/v1/usuarios/{id}` (actualiza campos, 404 si no existe, 401 anónimo) |
-| `integration/VehiculoControllerTests.java` 🆕 | **Caja negra.** `/api/v1/vehiculos`: formato de patente, normalización a mayúsculas, patente/visitante duplicado o inexistente, filtro por `visitanteId` |
-| `integration/VisitanteControllerTests.java` 🆕 | **Caja negra.** `/api/v1/visitantes`, con foco en `/me` (el visitante carga su propio perfil): 404 sin perfil, alta, documento duplicado, cuenta que ya tiene un perfil cargado |
+| `integration/VehiculoControllerTests.java` ✏️ | **Caja negra.** `/api/v1/vehiculos`: formato de patente, normalización a mayúsculas, patente/visitante duplicado o inexistente, filtro por `visitanteId`, y los casos nuevos de `PUT`/`DELETE` con control de propietario (403 si no sos el dueño) |
+| `integration/VisitanteControllerTests.java` ✏️ | **Caja negra.** `/api/v1/visitantes`, con foco en `/me` (el visitante carga y edita su propio perfil): 404 sin perfil, alta, documento duplicado, cuenta que ya tiene un perfil cargado, y la actualización por `PUT /me` |
 | `security/AppUserDetailsServiceTests.java` 🆕 | **Caja blanca.** El puente AppUser → UserDetails: mapea authorities correctamente, lanza `UsernameNotFoundException` si el email no existe |
-| `security/authenticationProvider/DevAuthenticationProviderTests.java` 🆕 | **Caja blanca.** Documenta el comportamiento a propósito "inseguro" de dev: autentica sin validar la contraseña, siempre que el email exista |
+| `security/authenticationProvider/DevAuthenticationProviderTests.java` ✏️ | **Caja blanca.** Reescrito: ya no documenta el viejo comportamiento inseguro. Ahora verifica que dev/test **valida la contraseña contra el hash** y rechaza con `BadCredentialsException` tanto si no matchea como si el email no existe |
 | `security/authenticationProvider/ProdAuthenticationProviderTests.java` 🆕 | **Caja blanca.** El que sí valida contraseña (perfil prod real): rechaza con `BadCredentialsException` tanto si la contraseña no matchea como si el usuario no existe (para no filtrar cuáles emails están registrados) |
 | `service/AuthServiceTests.java` | Tests unitarios de `AuthService` |
 | `service/CocheraServiceTests.java` | Tests de cocheras, incluye la cancelación automática de reservas al deshabilitar una cochera |
 | `service/ReservaServiceTests.java` | Tests unitarios de reservas (con mocks): mismas reglas que `ReservaControllerTests` pero aisladas del repositorio |
 | `service/UserServiceTests.java` ✏️ | Tests de gestión de usuarios. Agregué los casos de `deleteUser`: desvincula el visitante propio antes de borrar la cuenta (evita romper la FK `fk_visitante_app_user`), y no hace nada si no hay ninguno vinculado |
-| `service/VehiculoServiceTests.java` | Tests de vehículos |
-| `service/VisitanteServiceTests.java` ✏️ | Tests de visitantes. Agregué los casos de `obtenerPropio`/`crearPropio` (el flujo de `/me`): 404 sin perfil, cuenta que ya tiene uno, documento duplicado, alta correcta vinculada a la cuenta |
+| `service/VehiculoServiceTests.java` ✏️ | Tests de vehículos. Agregados los casos de `editar` y `eliminar`: control de propietario, patente duplicada al editar, y el bloqueo al borrar un vehículo con reservas |
+| `service/VisitanteServiceTests.java` ✏️ | Tests de visitantes, incluido todo el flujo `/me`: `obtenerPropio`, `crearPropio` y `actualizarPropio` — 404 sin perfil, cuenta que ya tiene uno, documento duplicado, alta correcta vinculada a la cuenta, y edición del teléfono/email propios |
 
 ## Sobre `LoginFlowTests` y el bug de `getServletPath()` en MockMvc
 
@@ -409,8 +507,9 @@ No es un bug de producción — contra la app real (Docker) ya confirmamos a man
 | `favicon.ico` | Ícono de la aplicación |
 | `globals.css` | Estilos globales y Tailwind |
 | `layout.js` | Layout global y `<Toaster />` de Sonner |
-| `page.js` | Página inicial con acceso al login |
-| `login/page.jsx` ✏️ | Login del personal interno; genera sesión y redirige según rol a `dashboard-admin` o `dashboard-user` |
+| `page.jsx` 🆕 | **Reemplaza a `page.js`** (que se eliminó). Landing pública de AparcAR: presenta el producto, con íconos SVG propios y menú hamburguesa en mobile. Si ya hay sesión activa, redirige sola al dashboard que corresponde al rol |
+| `not-found.js` 🆕 | Página 404 propia de Next.js, para cuando alguien escribe una ruta que no existe |
+| `login/page.jsx` ✏️ | Login del personal interno; genera sesión y redirige según rol a `dashboard-admin` o `dashboard-user`. Ahora pasa `validateStatus` a Axios para que un 401 **no** se trate como error: así el interceptor de respuesta no borra la cookie ni redirige, y la pantalla puede mostrar "Credenciales incorrectas" sin recargarse |
 | `recover-password/page.jsx` | Solicitud de OTP |
 | `reset-password/page.jsx` | Cambio de contraseña mediante OTP |
 | `unauthorized/page.jsx` | Página mostrada cuando el usuario no tiene permisos |
@@ -423,8 +522,9 @@ Sección para usuarios con rol `ADMIN`.
 
 | Archivo | Qué hace |
 |---|---|
-| `page.jsx` ✏️ | Entrada del dashboard ADMIN, protegida con `requireAuth(["ADMIN"])`. Combina la cuadrícula de cocheras, el alta de visitantes, y botones de navegación hacia `/cocheras` y `/usuarios` |
-| `EstadoCocherasGrid.jsx` 🆕 | Cuadrícula visual de ocupación: agrupa las cocheras por tipo (motos, autos, remolques, accesibles) y marca cada una como libre/ocupada/deshabilitada comparando `/api/v1/cocheras` contra `/api/v1/cocheras/disponibles` del día |
+| `page.jsx` ✏️ | Entrada del dashboard ADMIN, protegida con `requireAuth(["ADMIN"])`. Server Component: solo valida el rol y arma la barra de navegación (`/cocheras`, `/usuarios`, `LogoutButton`). El contenido lo delega en `PanelOperativo` |
+| `PanelOperativo.jsx` 🆕 | Agrupa las tres secciones operativas del panel: la cuadrícula de ocupación, el alta de visitantes y **el formulario de reservas**. Existe como componente de cliente aparte porque `page.jsx` es Server Component y no puede tener estado: acá vive el contador que le avisa a la cuadrícula que se creó una reserva y tiene que recargarse |
+| `EstadoCocherasGrid.jsx` ✏️ | Cuadrícula visual de ocupación: agrupa las cocheras por tipo (motos, autos, remolques, accesibles) y marca cada una como libre/ocupada/deshabilitada comparando `/api/v1/cocheras` contra `/api/v1/cocheras/disponibles` del día. Acepta una prop `refreshKey` 🆕: cuando cambia, vuelve a pedir los datos, para no quedar mostrando una cochera como libre después de reservarla |
 | `VisitantesContent.jsx` | Alta de visitante + vehículo hecha por el admin (formulario completo) |
 
 ### `app/dashboard-admin/cocheras/`
@@ -464,9 +564,9 @@ Sección destinada a usuarios internos con rol `USER`.
 
 | Archivo | Qué hace |
 |---|---|
-| `page.jsx` ✏️ | Entrada del dashboard USER, protegida con `requireAuth(["USER"])`. Combina "Mis datos" y "Nueva reserva" en una sola página |
-| `MiPerfilContent.jsx` 🆕 | El propio visitante carga sus datos (nombre, documento, teléfono, email) una sola vez, vinculados a su cuenta (`/api/v1/visitantes/me`), y agrega sus vehículos |
-| `ReservasContent.jsx` ✏️ | Alta de reserva por patente: se escribe/elige la patente (autocompletado nativo) y se resuelve automáticamente el visitante y el tipo de vehículo, en vez de elegir visitante→vehículo por separado. Vuelve a pedir la lista de vehículos al hacer foco en el campo (si se cargó uno recién en "Mis datos", arriba, no queda desactualizada) |
+| `page.jsx` ✏️ | Entrada del dashboard USER, protegida con `requireAuth(["USER"])`. Combina "Mis datos" y "Nueva reserva" en una sola página, más el `LogoutButton` 🆕 |
+| `MiPerfilContent.jsx` ✏️ | El propio visitante carga sus datos (nombre, documento, teléfono, email) una sola vez, vinculados a su cuenta (`/api/v1/visitantes/me`), y gestiona sus vehículos. Ampliado 🆕: ahora también **edita su teléfono y email** (`PUT /me`) y **edita o elimina sus vehículos** (`PUT` / `DELETE /api/v1/vehiculos/{id}`, con confirmación antes de borrar) |
+| `ReservasContent.jsx` | **Se mudó a `components/`** ✏️, porque ahora lo usan los dos dashboards. Ver esa sección |
 
 ---
 
@@ -482,7 +582,9 @@ Sección destinada a usuarios internos con rol `USER`.
 
 | Archivo | Qué hace |
 |---|---|
-| `ProtectedRoute.jsx` | Wrapper client-side para proteger rutas según autenticación/rol |
+| `ProtectedRoute.jsx` ✏️ | Wrapper client-side para proteger rutas según autenticación/rol. Refactorizado: se eliminó el estado `isReady` y la decisión de renderizar se deriva directo de `isHydrated + isAuthenticated + hasRequiredRole`, lo que evita mostrar contenido un instante antes de redirigir |
+| `LogoutButton.jsx` 🆕 | Botón "Cerrar sesión": llama a `logout()` del store (que borra la cookie JWT y limpia el estado) y navega a `/login` con `router.replace`, para que el botón Atrás no vuelva al dashboard |
+| `ReservasContent.jsx` 🆕 | **Movido desde `app/dashboard-user/`.** Alta de reserva por patente: se escribe/elige la patente (autocompletado nativo) y se resuelven solos el visitante y el tipo de vehículo. Vuelve a pedir la lista de vehículos al hacer foco en el campo, por si se cargó uno recién más arriba en la misma página. Sirve igual para los dos roles porque busca sobre el catálogo completo, sin filtrar por la cuenta que mira. La prop opcional `onReservaCreada` la usa el panel admin para refrescar la cuadrícula. Sus `id` de formulario van prefijados con `reserva-` para no chocar con los del alta de visitante, que se renderiza en la misma página |
 
 Las pantallas nuevas basadas en Server Components utilizan preferentemente `requireAuth()` desde `utils/serverAuth.js`.
 
@@ -531,18 +633,21 @@ Convención: `test/` refleja la estructura de `app/`, `store/` y `utils/` (misma
 | Archivo | Qué prueba |
 |---|---|
 | `setup.js` | Carga los matchers de `jest-dom`, limpia el DOM y las cookies después de cada test |
+| `page.test.jsx` 🆕 | `app/page.jsx`: muestra la landing si no hay sesión, redirige según el rol si la hay, y el menú hamburguesa abre y cierra en mobile |
+| `components/LogoutButton.test.jsx` 🆕 | `components/LogoutButton.jsx`: cierra la sesión y navega a `/login` |
 | `api.test.jsx` | Interceptores de `app/api.jsx`: baseURL, inyección del Bearer desde la cookie, **que no pise un Authorization ya seteado a mano** (regresión del bug del login doble), y el manejo de 401 (borra cookie + redirige) |
 | `login/page.test.jsx` | `app/login/page.jsx`: validaciones, Basic Auth armado correctamente, redirección según rol (ADMIN vs USER), errores del backend |
 | `store/authStore.test.js` | `store/authStore.js`: decodificación de authorities del JWT, cookie, expiración, `logout`/`checkAuth` |
 | `utils/env.test.js` | `utils/env.js`: prioridad de `window.__ENV` sobre el valor de build |
 | `dashboard-admin/EstadoCocherasGrid.test.jsx` | Agrupación por tipo, cálculo de ocupadas/libres/deshabilitadas, estado de carga y error |
 | `dashboard-admin/VisitantesContent.test.jsx` | Alta de visitante + vehículo (dos POST encadenados), validaciones, errores de duplicados |
-| `dashboard-admin/cocheras/CocherasManagement.test.jsx` | CRUD completo: filtros, alta, edición (con `window.confirm` al deshabilitar), baja (con confirmación) |
-| `dashboard-admin/usuarios/UserManagement.test.jsx` | Alta de usuario, activar, editar roles, eliminar (con confirmación) |
-| `dashboard-user/ReservasContent.test.jsx` | Resolución de visitante/vehículo por patente, cochera deshabilitada hasta tener match, **regresión del bug de caché de vehículos al hacer foco**, envío de la reserva |
-| `dashboard-user/MiPerfilContent.test.jsx` | Autoregistro del visitante (`/me`), alta de vehículo propio, validaciones y errores del backend |
+| `dashboard-admin/cocheras/CocherasManagement.test.jsx` ✏️ | CRUD completo: filtros, alta, edición (con `window.confirm` al deshabilitar), baja (con confirmación), y la navegación de regreso al panel |
+| `dashboard-admin/usuarios/UserManagement.test.jsx` ✏️ | Alta de usuario, activar, editar roles, eliminar (con confirmación), y la navegación de regreso al panel |
+| `components/ReservasContent.test.jsx` ✏️ | Resolución de visitante/vehículo por patente, cochera deshabilitada hasta tener match, **regresión del bug de caché de vehículos al hacer foco**, envío de la reserva. Se movió junto con el componente |
+| `dashboard-admin/PanelOperativo.test.jsx` 🆕 | **Regresión del bug de la reserva que no se agregaba**: que el panel admin incluya el formulario de reservas, que un admin pueda crear una resolviendo el visitante por patente, y que la cuadrícula pase de "0/1 ocupadas" a "1/1 ocupadas" sin recargar |
+| `dashboard-user/MiPerfilContent.test.jsx` ✏️ | Autoregistro del visitante (`/me`), alta de vehículo propio, validaciones y errores del backend, más los casos nuevos 🆕 de editar el perfil (`PUT /me`), editar un vehículo y eliminarlo con confirmación |
 
-El detalle de qué casos prueba cada archivo (front y back) está en `TESTS.md`, en la raíz del repo.
+El detalle de qué casos prueba cada archivo (front y back) está en `TESTS.md`, en la raíz del repo: **36 archivos y 251 tests** en total (160 del backend, 91 del frontend). Los dos suites corren solas en cada pull request, vía `.github/workflows/ci.yml`.
 
 ---
 
@@ -610,7 +715,7 @@ y luego pueden ser gestionados por un administrador.
 
 | Tabla | Origen | Columnas principales | Entidad |
 |---|---|---|---|
-| `visitantes` | Liquibase | `id`, `nombre`, `documento`, `telefono`, `email` | `Visitante.java` |
+| `visitantes` | Liquibase | `id`, `nombre`, `documento`, `telefono`, `email`, `app_user_id` (único, sin FK física) | `Visitante.java` |
 | `vehiculos` | Liquibase | `id`, `patente`, `tipo`, `visitante_id` | `Vehiculo.java` |
 | `cocheras` | Liquibase | `id`, `numero`, `sector`, `tipo`, `estado` | `Cochera.java` |
 | `reservas` | Liquibase | `id`, `fecha`, `visitante_id`, `vehiculo_id`, `cochera_id`, `estado`, `fecha_creacion` | `Reserva.java` |
