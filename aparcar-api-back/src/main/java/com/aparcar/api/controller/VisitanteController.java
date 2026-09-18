@@ -1,0 +1,62 @@
+package com.aparcar.api.controller;
+
+import com.aparcar.api.dto.reserva.VisitanteRequestDto;
+import com.aparcar.api.dto.reserva.VisitanteResponseDto;
+import com.aparcar.api.dto.reserva.VisitanteUpdateDto;
+import com.aparcar.api.service.IVisitanteService;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import java.util.List;
+import java.util.UUID;
+
+@RestController
+@RequestMapping("/api/v1/visitantes")
+@RequiredArgsConstructor
+public class VisitanteController {
+    private final IVisitanteService visitanteService;
+
+    @PostMapping
+    public ResponseEntity<VisitanteResponseDto> crear(@Valid @RequestBody VisitanteRequestDto dto) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(visitanteService.crear(dto));
+    }
+
+    @GetMapping
+    public ResponseEntity<List<VisitanteResponseDto>> listar() {
+        return ResponseEntity.ok(visitanteService.listar());
+    }
+
+    // Va antes de /{id} para que "me" no se intente parsear como UUID.
+    @GetMapping("/me")
+    public ResponseEntity<VisitanteResponseDto> obtenerPropio(Authentication authentication) {
+        return ResponseEntity.ok(visitanteService.obtenerPropio(authentication.getName()));
+    }
+
+    @PostMapping("/me")
+    public ResponseEntity<VisitanteResponseDto> crearPropio(
+            @Valid @RequestBody VisitanteRequestDto dto, Authentication authentication) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(visitanteService.crearPropio(authentication.getName(), dto));
+    }
+
+    @PutMapping("/me")
+    public ResponseEntity<VisitanteResponseDto> actualizarPropio(
+            @Valid @RequestBody VisitanteUpdateDto dto, Authentication authentication) {
+        return ResponseEntity.ok(visitanteService.actualizarPropio(authentication.getName(), dto));
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<VisitanteResponseDto> obtenerPorId(@PathVariable UUID id) {
+        return ResponseEntity.ok(visitanteService.obtenerPorId(id));
+    }
+}
