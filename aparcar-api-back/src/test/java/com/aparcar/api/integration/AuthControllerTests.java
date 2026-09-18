@@ -3,9 +3,9 @@ package com.aparcar.api.integration;
 import com.aparcar.api.component.IEmailSender;
 import com.aparcar.api.config.IntegrationTests;
 import com.aparcar.api.dto.email.PlainEmailData;
-import com.aparcar.api.entity.auth.AppUser;
+import com.aparcar.api.entity.auth.Visitante;
 import com.aparcar.api.entity.auth.OneTimePassword;
-import com.aparcar.api.repository.AppUserRepository;
+import com.aparcar.api.repository.VisitanteRepository;
 import com.aparcar.api.repository.OneTimePasswordRepository;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
@@ -36,7 +36,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 public class AuthControllerTests {
 
     @Autowired
-    private AppUserRepository userRepository;
+    private VisitanteRepository userRepository;
 
     @Autowired
     private OneTimePasswordRepository otpRepository;
@@ -79,31 +79,34 @@ public class AuthControllerTests {
                 .andExpect(jsonPath("$.code").value(400))
                 .andExpect(jsonPath("$.message").value("Validation failed"))
                 .andExpect(jsonPath("$.details").value(containsInAnyOrder(
+                        "documento: El documento es obligatorio",
                         "password: Password must be at least 8 characters long",
                         "email: must be a well-formed email address")));
     }
 
     @Test
     @WithMockUser(authorities = "ADMIN")
-    @DisplayName("/register creates inactive user")
-    void registerCreatesInactiveUser() throws Exception {
+    @DisplayName("/register creates an active user with rol USER")
+    void registerCreatesActiveUser() throws Exception {
         var context = getContext();
 
         mockMvc.perform(post("/register")
                         .with(securityContext(context))
                         .contentType(MediaType.APPLICATION_JSON_VALUE)
-                        .content("{ \"nombre\": \"Some Name\", \"email\": \"some@email.com\", \"password\": \"12345678\" }"))
+                        .content("{ \"nombre\": \"Some Name\", \"documento\": \"30111222\", \"email\": \"some@email.com\", \"password\": \"12345678\" }"))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.nombre").value("Some Name"))
                 .andExpect(jsonPath("$.email").value("some@email.com"))
                 .andExpect(jsonPath("$.authorities").isArray())
                 .andExpect(jsonPath("$.authorities[0]").value("USER"));
 
-        AppUser user = userRepository.findByEmail("some@email.com")
+        Visitante user = userRepository.findByEmail("some@email.com")
                 .orElseThrow(() -> new IllegalStateException("User not found"));
 
         assertEquals("Some Name", user.getNombre());
+        assertEquals("30111222", user.getDocumento());
         assertEquals("some@email.com", user.getEmail());
+        assertEquals(true, user.getIsActive());
     }
 
     @Test
@@ -122,10 +125,11 @@ public class AuthControllerTests {
     @DisplayName("/forgot-password sends OTP")
     void forgotPasswordSendsOTP() throws Exception {
         doNothing().when(emailSender).sendPlainTextEmail(any(PlainEmailData.class));
-        AppUser user = new AppUser();
+        Visitante user = new Visitante();
                 user.setNombre("Test User");
+                user.setDocumento("30111222");
                 user.setEmail("some@email.com");
-        user.setPassword("123");
+                user.setPassword("123");
         user.setIsActive(true);
         userRepository.save(user);
 
@@ -149,10 +153,11 @@ public class AuthControllerTests {
     @DisplayName("/reset-password resets password with valid OTP")
     void resetPasswordWithValidOTP() throws Exception {
         doNothing().when(emailSender).sendPlainTextEmail(any(PlainEmailData.class));
-        AppUser user = new AppUser();
+        Visitante user = new Visitante();
                 user.setNombre("Test User");
+                user.setDocumento("30111222");
                 user.setEmail("some@email.com");
-        user.setPassword("123");
+                user.setPassword("123");
         user.setIsActive(true);
         userRepository.save(user);
 
@@ -195,7 +200,7 @@ public class AuthControllerTests {
                 .andExpect(status().isOk());
 
         // Verify the password was changed
-        AppUser updatedUser = userRepository.findByEmail("some@email.com")
+        Visitante updatedUser = userRepository.findByEmail("some@email.com")
                 .orElseThrow(() -> new IllegalStateException("User not found"));
 
         assertTrue(passwordEncoder.matches("newpassword123", updatedUser.getPassword()));

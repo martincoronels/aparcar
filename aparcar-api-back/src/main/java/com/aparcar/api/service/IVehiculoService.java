@@ -11,10 +11,24 @@ import java.util.UUID;
 
 public interface IVehiculoService {
     /**
+     * Alta sin control de dueño. Solo para uso interno del backend (el alta
+     * operativa de un visitante); lo que entra por la API pasa por
+     * {@link #crear(VehiculoRequestDto, String, boolean)}.
+     *
      * @throws NotFoundException   Si el visitante indicado no existe.
      * @throws ValidationException Si ya existe un vehiculo con la misma patente.
      */
     VehiculoResponseDto crear(VehiculoRequestDto dto);
+
+    /**
+     * Un visitante solo puede cargar vehiculos a su nombre: si
+     * {@code requesterIsAdmin} es false se ignora el visitante del dto y se usa
+     * la cuenta autenticada.
+     *
+     * @throws NotFoundException   Si el visitante indicado no existe.
+     * @throws ValidationException Si ya existe un vehiculo con la misma patente.
+     */
+    VehiculoResponseDto crear(VehiculoRequestDto dto, String requesterEmail, boolean requesterIsAdmin);
 
     /**
      * @throws NotFoundException Si no existe un vehiculo con ese id.
@@ -24,6 +38,11 @@ public interface IVehiculoService {
     List<VehiculoResponseDto> listar();
 
     List<VehiculoResponseDto> listarPorVisitante(UUID visitanteId);
+
+    /**
+     * Los vehiculos de la cuenta autenticada.
+     */
+    List<VehiculoResponseDto> listarPropios(String email);
 
     /**
      * @throws NotFoundException                                     Si no existe un vehiculo con ese id.

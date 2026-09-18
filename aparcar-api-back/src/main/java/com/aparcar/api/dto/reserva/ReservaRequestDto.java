@@ -9,7 +9,11 @@ import java.util.UUID;
 
 @Data
 public class ReservaRequestDto {
-    @NotNull(message = "El visitante es obligatorio")
+    /**
+     * A nombre de quien va la reserva. Solo lo puede mandar un ADMIN: si quien
+     * reserva es un USER, el backend ignora este campo y usa su propia cuenta,
+     * porque un visitante solo puede reservar a su nombre.
+     */
     private UUID visitanteId;
 
     @NotNull(message = "El vehiculo es obligatorio")

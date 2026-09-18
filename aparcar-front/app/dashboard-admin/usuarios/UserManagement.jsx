@@ -16,6 +16,10 @@ const createUserSchema = z.object({
     .min(1, "El nombre es obligatorio")
     .max(100, "El nombre no puede superar los 100 caracteres"),
 
+  documento: z
+    .string()
+    .min(1, "El documento es obligatorio"),
+
   email: z
     .string()
     .email("Ingresá un correo válido"),
@@ -33,6 +37,10 @@ const editUserSchema = z.object({
     .string()
     .min(1, "El nombre es obligatorio")
     .max(100, "El nombre no puede superar los 100 caracteres"),
+
+  documento: z
+    .string()
+    .min(1, "El documento es obligatorio"),
 
   telefono: z.string().optional(),
 
@@ -64,6 +72,7 @@ export default function UserManagement() {
     resolver: zodResolver(createUserSchema),
     defaultValues: {
       nombre: "",
+      documento: "",
       email: "",
       password: "",
       telefono: "",
@@ -82,6 +91,7 @@ export default function UserManagement() {
     resolver: zodResolver(editUserSchema),
     defaultValues: {
       nombre: "",
+      documento: "",
       telefono: "",
       authorities: [],
     },
@@ -112,6 +122,7 @@ export default function UserManagement() {
     try {
       await api.post("/register", {
         nombre: data.nombre,
+        documento: data.documento,
         email: data.email,
         password: data.password,
         telefono: data.telefono || null,
@@ -135,6 +146,7 @@ export default function UserManagement() {
 
     resetEdit({
       nombre: user.nombre,
+      documento: user.documento || "",
       telefono: user.telefono || "",
       authorities: user.authorities || [],
     });
@@ -145,6 +157,7 @@ export default function UserManagement() {
 
     resetEdit({
       nombre: "",
+      documento: "",
       telefono: "",
       authorities: [],
     });
@@ -158,6 +171,7 @@ export default function UserManagement() {
     try {
       await api.put(`/api/v1/usuarios/${editingUser.id}`, {
         nombre: data.nombre,
+        documento: data.documento,
         telefono: data.telefono || null,
         authorities: data.authorities,
       });
@@ -242,7 +256,8 @@ export default function UserManagement() {
           </h1>
 
           <p className="mt-2 text-sm text-[#002147]/60">
-            Administrá los usuarios internos que tienen acceso a AparcAR.
+            Administrá las cuentas de AparcAR. Cada cuenta es un visitante: el
+            mismo registro sirve para iniciar sesión y para reservar.
           </p>
         </div>
 
@@ -254,7 +269,8 @@ export default function UserManagement() {
               </h2>
 
               <p className="mt-1 mb-6 text-sm text-[#002147]/60">
-                Creá una nueva cuenta para personal interno.
+                Alta administrativa: acá elegís vos la contraseña. Nace con rol
+                USER y el rol se cambia editando la cuenta.
               </p>
 
               <form
@@ -279,6 +295,28 @@ export default function UserManagement() {
                   {createErrors.nombre && (
                     <p className="mt-1 text-sm text-red-500">
                       {createErrors.nombre.message}
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <label
+                    htmlFor="documento"
+                    className={labelClasses}
+                  >
+                    Documento
+                  </label>
+
+                  <input
+                    id="documento"
+                    {...registerCreate("documento")}
+                    className={inputClasses}
+                    placeholder="DNI / documento"
+                  />
+
+                  {createErrors.documento && (
+                    <p className="mt-1 text-sm text-red-500">
+                      {createErrors.documento.message}
                     </p>
                   )}
                 </div>
@@ -409,6 +447,27 @@ export default function UserManagement() {
 
                     <div>
                       <label
+                        htmlFor="edit-documento"
+                        className={labelClasses}
+                      >
+                        Documento
+                      </label>
+
+                      <input
+                        id="edit-documento"
+                        {...registerEdit("documento")}
+                        className={inputClasses}
+                      />
+
+                      {editErrors.documento && (
+                        <p className="mt-1 text-sm text-red-500">
+                          {editErrors.documento.message}
+                        </p>
+                      )}
+                    </div>
+
+                    <div>
+                      <label
                         htmlFor="edit-telefono"
                         className={labelClasses}
                       >
@@ -502,6 +561,10 @@ export default function UserManagement() {
                         </th>
 
                         <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[#002147]/50">
+                          Documento
+                        </th>
+
+                        <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[#002147]/50">
                           Teléfono
                         </th>
 
@@ -533,6 +596,10 @@ export default function UserManagement() {
                             <p className="text-sm text-[#002147]/60">
                               {user.email}
                             </p>
+                          </td>
+
+                          <td className="whitespace-nowrap px-6 py-4 text-sm text-[#002147]/70">
+                            {user.documento || "—"}
                           </td>
 
                           <td className="whitespace-nowrap px-6 py-4 text-sm text-[#002147]/70">

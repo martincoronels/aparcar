@@ -6,6 +6,7 @@ import java.util.UUID;
 public record UserResponseDto(
         UUID id,
         String nombre,
+        String documento,
         String email,
         String telefono,
         Set<String> authorities,

@@ -34,13 +34,23 @@ public class VehiculoController {
     }
 
     @PostMapping
-    public ResponseEntity<VehiculoResponseDto> crear(@Valid @RequestBody VehiculoRequestDto dto) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(vehiculoService.crear(dto));
+    public ResponseEntity<VehiculoResponseDto> crear(
+            @Valid @RequestBody VehiculoRequestDto dto, Authentication authentication) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(vehiculoService.crear(dto, authentication.getName(), esAdmin(authentication)));
     }
 
+    /**
+     * Un visitante solo ve sus propios vehiculos, sin importar que pida: el
+     * catalogo completo es cosa del ADMIN, que lo necesita para reservar en
+     * nombre de otro.
+     */
     @GetMapping
     public ResponseEntity<List<VehiculoResponseDto>> listar(
-            @RequestParam(required = false) UUID visitanteId) {
+            @RequestParam(required = false) UUID visitanteId, Authentication authentication) {
+        if (!esAdmin(authentication)) {
+            return ResponseEntity.ok(vehiculoService.listarPropios(authentication.getName()));
+        }
         if (visitanteId != null) {
             return ResponseEntity.ok(vehiculoService.listarPorVisitante(visitanteId));
         }

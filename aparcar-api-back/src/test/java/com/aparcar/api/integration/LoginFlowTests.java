@@ -1,8 +1,8 @@
 package com.aparcar.api.integration;
 
 import com.aparcar.api.entity.auth.AppAuthority;
-import com.aparcar.api.entity.auth.AppUser;
-import com.aparcar.api.repository.AppUserRepository;
+import com.aparcar.api.entity.auth.Visitante;
+import com.aparcar.api.repository.VisitanteRepository;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
@@ -67,7 +67,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class LoginFlowTests {
 
     @Autowired
-    private AppUserRepository appUserRepository;
+    private VisitanteRepository visitanteRepository;
 
     @Autowired
     private PasswordEncoder passwordEncoder;
@@ -96,17 +96,20 @@ class LoginFlowTests {
 
     @AfterEach
     void tearDown() {
-        appUserRepository.deleteAll();
+        visitanteRepository.deleteAll();
     }
 
     private void saveUser(String email, String password, Set<AppAuthority> authorities) {
-        AppUser user = new AppUser();
+        Visitante user = new Visitante();
         user.setNombre("Test User");
+        // El documento es obligatorio y unico: lo derivamos del email para que
+        // cada cuenta de prueba tenga el suyo.
+        user.setDocumento(String.valueOf(Math.abs(email.hashCode())));
         user.setEmail(email);
         user.setPassword(passwordEncoder.encode(password));
         user.setAuthorities(authorities);
         user.setIsActive(true);
-        appUserRepository.save(user);
+        visitanteRepository.save(user);
     }
 
     private ResponseEntity<String> login(String email, String password) {

@@ -9,16 +9,9 @@ import api from "@/app/api";
 
 const PATENTE_REGEX = /^([A-Za-z]{3}[0-9]{3}|[A-Za-z]{2}[0-9]{3}[A-Za-z]{2})$/;
 
-const perfilSchema = z.object({
-  nombre: z.string().min(1, "El nombre es obligatorio"),
-  documento: z.string().min(1, "El documento es obligatorio"),
-  telefono: z.string().optional(),
-  email: z.string().email("Ingresa un correo válido").or(z.literal("")).optional(),
-});
-
 const editPerfilSchema = z.object({
   telefono: z.string().optional(),
-  email: z.string().email("Ingresa un correo válido").or(z.literal("")).optional(),
+  email: z.string().min(1, "El email es obligatorio").email("Ingresa un correo válido"),
 });
 
 const vehiculoSchema = z.object({
@@ -35,14 +28,19 @@ const inputClasses =
   "block w-full rounded-xl border-0 py-3 px-4 text-[#002147] bg-white ring-1 ring-inset ring-[#002147]/20 placeholder:text-[#002147]/40 focus:z-10 focus:ring-2 focus:ring-inset focus:ring-[#0cb7f2] sm:text-sm sm:leading-6 transition-all";
 const labelClasses = "block text-sm font-medium text-[#002147]/70 mb-1";
 
-export default function MiPerfilContent() {
+// Ya no existe el paso de "cargá tus datos": la cuenta y el visitante son la
+// misma entidad, así que nombre y documento vienen dados desde el alta y acá
+// solo se muestran. Lo editable es lo de contacto y los vehículos propios.
+//
+// `onVehiculosCambiaron` avisa al dashboard para que el formulario de reserva
+// vuelva a pedir la lista de patentes.
+export default function MiPerfilContent({ onVehiculosCambiaron }) {
   const [visitante, setVisitante] = useState(null);
   const [vehiculos, setVehiculos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [editandoPerfil, setEditandoPerfil] = useState(false);
   const [editandoVehiculoId, setEditandoVehiculoId] = useState(null);
 
-  const perfilForm = useForm({ resolver: zodResolver(perfilSchema) });
   const editPerfilForm = useForm({ resolver: zodResolver(editPerfilSchema) });
   const vehiculoForm = useForm({
     resolver: zodResolver(vehiculoSchema),
@@ -50,8 +48,10 @@ export default function MiPerfilContent() {
   });
   const editVehiculoForm = useForm({ resolver: zodResolver(vehiculoSchema) });
 
-  const cargarVehiculos = async (visitanteId) => {
-    const res = await api.get("/api/v1/vehiculos", { params: { visitanteId } });
+  // El backend devuelve solo los vehículos de la cuenta autenticada, así que no
+  // hace falta pasarle a quién pertenecen.
+  const cargarVehiculos = async () => {
+    const res = await api.get("/api/v1/vehiculos");
     setVehiculos(res.data);
   };
 
@@ -60,13 +60,9 @@ export default function MiPerfilContent() {
       setLoading(true);
       const res = await api.get("/api/v1/visitantes/me");
       setVisitante(res.data);
-      await cargarVehiculos(res.data.id);
-    } catch (error) {
-      if (error.response?.status === 404) {
-        setVisitante(null);
-      } else {
-        toast.error("No se pudieron cargar tus datos.");
-      }
+      await cargarVehiculos();
+    } catch {
+      toast.error("No se pudieron cargar tus datos.");
     } finally {
       setLoading(false);
     }
@@ -75,22 +71,6 @@ export default function MiPerfilContent() {
   useEffect(() => {
     cargar();
   }, []);
-
-  const onCrearPerfil = async (data) => {
-    try {
-      const res = await api.post("/api/v1/visitantes/me", {
-        nombre: data.nombre,
-        documento: data.documento,
-        telefono: data.telefono || undefined,
-        email: data.email || undefined,
-      });
-      toast.success("Tus datos quedaron registrados");
-      setVisitante(res.data);
-      setVehiculos([]);
-    } catch (err) {
-      toast.error(err.response?.data?.message || "No se pudieron guardar tus datos.");
-    }
-  };
 
   const startEditandoPerfil = () => {
     editPerfilForm.reset({ telefono: visitante.telefono || "", email: visitante.email || "" });
@@ -101,7 +81,7 @@ export default function MiPerfilContent() {
     try {
       const res = await api.put("/api/v1/visitantes/me", {
         telefono: data.telefono || undefined,
-        email: data.email || undefined,
+        email: data.email,
       });
       toast.success("Tus datos se actualizaron correctamente");
       setVisitante(res.data);
@@ -113,10 +93,11 @@ export default function MiPerfilContent() {
 
   const onAgregarVehiculo = async (data) => {
     try {
-      await api.post("/api/v1/vehiculos", { ...data, visitanteId: visitante.id });
+      await api.post("/api/v1/vehiculos", data);
       toast.success("Vehículo agregado correctamente");
       vehiculoForm.reset({ patente: "", tipo: "AUTO" });
-      await cargarVehiculos(visitante.id);
+      await cargarVehiculos();
+      onVehiculosCambiaron?.();
     } catch (err) {
       toast.error(err.response?.data?.message || "No se pudo agregar el vehículo.");
     }
@@ -132,7 +113,8 @@ export default function MiPerfilContent() {
       await api.put(`/api/v1/vehiculos/${editandoVehiculoId}`, data);
       toast.success("Vehículo actualizado correctamente");
       setEditandoVehiculoId(null);
-      await cargarVehiculos(visitante.id);
+      await cargarVehiculos();
+      onVehiculosCambiaron?.();
     } catch (err) {
       toast.error(err.response?.data?.message || "No se pudo actualizar el vehículo.");
     }
@@ -147,7 +129,8 @@ export default function MiPerfilContent() {
     try {
       await api.delete(`/api/v1/vehiculos/${vehiculo.id}`);
       toast.success("Vehículo eliminado correctamente");
-      await cargarVehiculos(visitante.id);
+      await cargarVehiculos();
+      onVehiculosCambiaron?.();
     } catch (err) {
       toast.error(err.response?.data?.message || "No se pudo eliminar el vehículo.");
     }
@@ -157,213 +140,181 @@ export default function MiPerfilContent() {
     return <div className="text-center text-sm text-[#002147]/60 p-8">Cargando tus datos...</div>;
   }
 
+  if (!visitante) {
+    return (
+      <div className="text-center text-sm text-[#002147]/60 p-8">
+        No se pudieron cargar tus datos.
+      </div>
+    );
+  }
+
   return (
     <div className="mx-auto max-w-2xl">
       <h1 className="text-3xl font-extrabold tracking-tight text-[#002147] mb-2">Mis datos</h1>
-      <p className="text-sm text-[#002147]/60 mb-8">
-        {visitante
-          ? "Tus datos y vehículos registrados."
-          : "Cargá tus datos una sola vez para poder reservar una cochera."}
-      </p>
+      <p className="text-sm text-[#002147]/60 mb-8">Tus datos y vehículos registrados.</p>
 
-      {!visitante ? (
-        <div className="rounded-2xl bg-white p-8 shadow-xl shadow-[#002147]/10 ring-1 ring-[#002147]/15">
-          <form className="space-y-4" onSubmit={perfilForm.handleSubmit(onCrearPerfil)}>
+      <div className="space-y-8">
+        <div className="rounded-2xl bg-white p-6 shadow-xl shadow-[#002147]/10 ring-1 ring-[#002147]/15">
+          <div className="flex items-start justify-between gap-4">
             <div>
-              <label className={labelClasses} htmlFor="nombre">Nombre</label>
-              <input id="nombre" {...perfilForm.register("nombre")} className={inputClasses} placeholder="Nombre completo" />
-              {perfilForm.formState.errors.nombre && (
-                <p className="mt-1 text-sm text-red-500">{perfilForm.formState.errors.nombre.message}</p>
+              <h2 className="text-lg font-bold text-[#002147]">{visitante.nombre}</h2>
+              <p className="text-sm text-[#002147]/60">
+                Documento {visitante.documento}
+                {visitante.telefono ? ` · ${visitante.telefono}` : ""}
+                {visitante.email ? ` · ${visitante.email}` : ""}
+              </p>
+            </div>
+
+            {!editandoPerfil && (
+              <button
+                type="button"
+                onClick={startEditandoPerfil}
+                className="shrink-0 rounded-lg border border-[#002147]/20 px-3 py-2 text-xs font-semibold text-[#002147] hover:bg-[#002147]/5 transition-colors"
+              >
+                Editar mis datos
+              </button>
+            )}
+          </div>
+
+          {editandoPerfil && (
+            <form
+              className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2"
+              onSubmit={editPerfilForm.handleSubmit(onEditarPerfil)}
+            >
+              <div>
+                <label className={labelClasses} htmlFor="edit-telefono">Teléfono</label>
+                <input id="edit-telefono" {...editPerfilForm.register("telefono")} className={inputClasses} />
+              </div>
+              <div>
+                <label className={labelClasses} htmlFor="edit-email">Email</label>
+                <input id="edit-email" type="email" {...editPerfilForm.register("email")} className={inputClasses} />
+                {editPerfilForm.formState.errors.email && (
+                  <p className="mt-1 text-sm text-red-500">{editPerfilForm.formState.errors.email.message}</p>
+                )}
+                <p className="mt-1 text-xs text-[#002147]/50">
+                  Es con lo que iniciás sesión: si lo cambiás, entrás con el nuevo.
+                </p>
+              </div>
+              <div className="flex gap-2 sm:col-span-2">
+                <button
+                  type="submit"
+                  disabled={editPerfilForm.formState.isSubmitting}
+                  className="rounded-xl bg-[#0cb7f2] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#002147] transition-all disabled:opacity-50"
+                >
+                  Guardar cambios
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEditandoPerfil(false)}
+                  className="rounded-xl px-4 py-2.5 text-sm font-medium text-[#002147]/70 hover:bg-[#002147]/5 transition-colors"
+                >
+                  Cancelar
+                </button>
+              </div>
+            </form>
+          )}
+        </div>
+
+        <div className="rounded-2xl bg-white p-6 shadow-xl shadow-[#002147]/10 ring-1 ring-[#002147]/15">
+          <h2 className="text-lg font-bold text-[#002147] mb-4">Mis vehículos</h2>
+
+          {vehiculos.length === 0 ? (
+            <p className="text-sm text-[#002147]/60 mb-4">Todavía no cargaste ningún vehículo.</p>
+          ) : (
+            <ul className="mb-4 divide-y divide-[#002147]/10">
+              {vehiculos.map((v) =>
+                editandoVehiculoId === v.id ? (
+                  <li key={v.id} className="py-3">
+                    <form
+                      className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_auto_auto_auto] sm:items-start"
+                      onSubmit={editVehiculoForm.handleSubmit(onEditarVehiculo)}
+                    >
+                      <div>
+                        <input
+                          {...editVehiculoForm.register("patente")}
+                          className={`${inputClasses} uppercase`}
+                        />
+                        {editVehiculoForm.formState.errors.patente && (
+                          <p className="mt-1 text-sm text-red-500">
+                            {editVehiculoForm.formState.errors.patente.message}
+                          </p>
+                        )}
+                      </div>
+                      <select {...editVehiculoForm.register("tipo")} className={inputClasses}>
+                        <option value="AUTO">Auto</option>
+                        <option value="MOTO">Moto</option>
+                        <option value="CARGA">Carga</option>
+                      </select>
+                      <button
+                        type="submit"
+                        className="rounded-xl bg-[#0cb7f2] px-4 py-3 text-sm font-semibold text-white hover:bg-[#002147] transition-all"
+                      >
+                        Guardar
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setEditandoVehiculoId(null)}
+                        className="rounded-xl px-4 py-3 text-sm font-medium text-[#002147]/70 hover:bg-[#002147]/5 transition-colors"
+                      >
+                        Cancelar
+                      </button>
+                    </form>
+                  </li>
+                ) : (
+                  <li key={v.id} className="py-2 flex items-center justify-between text-sm">
+                    <span className="font-medium text-[#002147]">{v.patente}</span>
+                    <span className="text-[#002147]/60">{v.tipo}</span>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => startEditandoVehiculo(v)}
+                        className="rounded-lg border border-[#002147]/20 px-2.5 py-1 text-xs font-semibold text-[#002147] hover:bg-[#002147]/5 transition-colors"
+                      >
+                        Editar
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => eliminarVehiculo(v)}
+                        className="rounded-lg border border-red-200 px-2.5 py-1 text-xs font-semibold text-red-600 hover:bg-red-50 transition-colors"
+                      >
+                        Eliminar
+                      </button>
+                    </div>
+                  </li>
+                )
+              )}
+            </ul>
+          )}
+
+          <form
+            className="grid grid-cols-1 sm:grid-cols-[1fr_auto_auto] gap-3 sm:items-start"
+            onSubmit={vehiculoForm.handleSubmit(onAgregarVehiculo)}
+          >
+            <div>
+              <input
+                {...vehiculoForm.register("patente")}
+                className={`${inputClasses} uppercase`}
+                placeholder="ABC123 / AB123CD"
+              />
+              {vehiculoForm.formState.errors.patente && (
+                <p className="mt-1 text-sm text-red-500">{vehiculoForm.formState.errors.patente.message}</p>
               )}
             </div>
-            <div>
-              <label className={labelClasses} htmlFor="documento">Documento</label>
-              <input id="documento" {...perfilForm.register("documento")} className={inputClasses} placeholder="DNI / documento" />
-              {perfilForm.formState.errors.documento && (
-                <p className="mt-1 text-sm text-red-500">{perfilForm.formState.errors.documento.message}</p>
-              )}
-            </div>
-            <div>
-              <label className={labelClasses} htmlFor="telefono">Teléfono (opcional)</label>
-              <input id="telefono" {...perfilForm.register("telefono")} className={inputClasses} placeholder="Teléfono" />
-            </div>
-            <div>
-              <label className={labelClasses} htmlFor="email">Email (opcional)</label>
-              <input id="email" type="email" {...perfilForm.register("email")} className={inputClasses} placeholder="Email" />
-              {perfilForm.formState.errors.email && (
-                <p className="mt-1 text-sm text-red-500">{perfilForm.formState.errors.email.message}</p>
-              )}
-            </div>
+            <select {...vehiculoForm.register("tipo")} className={inputClasses}>
+              <option value="AUTO">Auto</option>
+              <option value="MOTO">Moto</option>
+              <option value="CARGA">Carga</option>
+            </select>
             <button
               type="submit"
-              disabled={perfilForm.formState.isSubmitting}
-              className="flex w-full justify-center rounded-xl bg-[#0cb7f2] px-3 py-3 text-sm font-semibold text-white hover:bg-[#002147] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={vehiculoForm.formState.isSubmitting}
+              className="rounded-xl bg-[#0cb7f2] px-4 py-3 text-sm font-semibold text-white hover:bg-[#002147] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {perfilForm.formState.isSubmitting ? "Guardando..." : "Guardar mis datos"}
+              Agregar
             </button>
           </form>
         </div>
-      ) : (
-        <div className="space-y-8">
-          <div className="rounded-2xl bg-white p-6 shadow-xl shadow-[#002147]/10 ring-1 ring-[#002147]/15">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <h2 className="text-lg font-bold text-[#002147]">{visitante.nombre}</h2>
-                <p className="text-sm text-[#002147]/60">
-                  Documento {visitante.documento}
-                  {visitante.telefono ? ` · ${visitante.telefono}` : ""}
-                  {visitante.email ? ` · ${visitante.email}` : ""}
-                </p>
-              </div>
-
-              {!editandoPerfil && (
-                <button
-                  type="button"
-                  onClick={startEditandoPerfil}
-                  className="shrink-0 rounded-lg border border-[#002147]/20 px-3 py-2 text-xs font-semibold text-[#002147] hover:bg-[#002147]/5 transition-colors"
-                >
-                  Editar mis datos
-                </button>
-              )}
-            </div>
-
-            {editandoPerfil && (
-              <form
-                className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2"
-                onSubmit={editPerfilForm.handleSubmit(onEditarPerfil)}
-              >
-                <div>
-                  <label className={labelClasses} htmlFor="edit-telefono">Teléfono</label>
-                  <input id="edit-telefono" {...editPerfilForm.register("telefono")} className={inputClasses} />
-                </div>
-                <div>
-                  <label className={labelClasses} htmlFor="edit-email">Email</label>
-                  <input id="edit-email" type="email" {...editPerfilForm.register("email")} className={inputClasses} />
-                  {editPerfilForm.formState.errors.email && (
-                    <p className="mt-1 text-sm text-red-500">{editPerfilForm.formState.errors.email.message}</p>
-                  )}
-                </div>
-                <div className="flex gap-2 sm:col-span-2">
-                  <button
-                    type="submit"
-                    disabled={editPerfilForm.formState.isSubmitting}
-                    className="rounded-xl bg-[#0cb7f2] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#002147] transition-all disabled:opacity-50"
-                  >
-                    Guardar cambios
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setEditandoPerfil(false)}
-                    className="rounded-xl px-4 py-2.5 text-sm font-medium text-[#002147]/70 hover:bg-[#002147]/5 transition-colors"
-                  >
-                    Cancelar
-                  </button>
-                </div>
-              </form>
-            )}
-          </div>
-
-          <div className="rounded-2xl bg-white p-6 shadow-xl shadow-[#002147]/10 ring-1 ring-[#002147]/15">
-            <h2 className="text-lg font-bold text-[#002147] mb-4">Mis vehículos</h2>
-
-            {vehiculos.length === 0 ? (
-              <p className="text-sm text-[#002147]/60 mb-4">Todavía no cargaste ningún vehículo.</p>
-            ) : (
-              <ul className="mb-4 divide-y divide-[#002147]/10">
-                {vehiculos.map((v) =>
-                  editandoVehiculoId === v.id ? (
-                    <li key={v.id} className="py-3">
-                      <form
-                        className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_auto_auto_auto] sm:items-start"
-                        onSubmit={editVehiculoForm.handleSubmit(onEditarVehiculo)}
-                      >
-                        <div>
-                          <input
-                            {...editVehiculoForm.register("patente")}
-                            className={`${inputClasses} uppercase`}
-                          />
-                          {editVehiculoForm.formState.errors.patente && (
-                            <p className="mt-1 text-sm text-red-500">
-                              {editVehiculoForm.formState.errors.patente.message}
-                            </p>
-                          )}
-                        </div>
-                        <select {...editVehiculoForm.register("tipo")} className={inputClasses}>
-                          <option value="AUTO">Auto</option>
-                          <option value="MOTO">Moto</option>
-                          <option value="CARGA">Carga</option>
-                        </select>
-                        <button
-                          type="submit"
-                          className="rounded-xl bg-[#0cb7f2] px-4 py-3 text-sm font-semibold text-white hover:bg-[#002147] transition-all"
-                        >
-                          Guardar
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setEditandoVehiculoId(null)}
-                          className="rounded-xl px-4 py-3 text-sm font-medium text-[#002147]/70 hover:bg-[#002147]/5 transition-colors"
-                        >
-                          Cancelar
-                        </button>
-                      </form>
-                    </li>
-                  ) : (
-                    <li key={v.id} className="py-2 flex items-center justify-between text-sm">
-                      <span className="font-medium text-[#002147]">{v.patente}</span>
-                      <span className="text-[#002147]/60">{v.tipo}</span>
-                      <div className="flex gap-2">
-                        <button
-                          type="button"
-                          onClick={() => startEditandoVehiculo(v)}
-                          className="rounded-lg border border-[#002147]/20 px-2.5 py-1 text-xs font-semibold text-[#002147] hover:bg-[#002147]/5 transition-colors"
-                        >
-                          Editar
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => eliminarVehiculo(v)}
-                          className="rounded-lg border border-red-200 px-2.5 py-1 text-xs font-semibold text-red-600 hover:bg-red-50 transition-colors"
-                        >
-                          Eliminar
-                        </button>
-                      </div>
-                    </li>
-                  )
-                )}
-              </ul>
-            )}
-
-            <form
-              className="grid grid-cols-1 sm:grid-cols-[1fr_auto_auto] gap-3 sm:items-start"
-              onSubmit={vehiculoForm.handleSubmit(onAgregarVehiculo)}
-            >
-              <div>
-                <input
-                  {...vehiculoForm.register("patente")}
-                  className={`${inputClasses} uppercase`}
-                  placeholder="ABC123 / AB123CD"
-                />
-                {vehiculoForm.formState.errors.patente && (
-                  <p className="mt-1 text-sm text-red-500">{vehiculoForm.formState.errors.patente.message}</p>
-                )}
-              </div>
-              <select {...vehiculoForm.register("tipo")} className={inputClasses}>
-                <option value="AUTO">Auto</option>
-                <option value="MOTO">Moto</option>
-                <option value="CARGA">Carga</option>
-              </select>
-              <button
-                type="submit"
-                disabled={vehiculoForm.formState.isSubmitting}
-                className="rounded-xl bg-[#0cb7f2] px-4 py-3 text-sm font-semibold text-white hover:bg-[#002147] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Agregar
-              </button>
-            </form>
-          </div>
-        </div>
-      )}
+      </div>
     </div>
   );
 }

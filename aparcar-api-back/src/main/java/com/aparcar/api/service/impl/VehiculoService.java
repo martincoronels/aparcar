@@ -3,9 +3,8 @@ package com.aparcar.api.service.impl;
 import com.aparcar.api.dto.reserva.VehiculoRequestDto;
 import com.aparcar.api.dto.reserva.VehiculoResponseDto;
 import com.aparcar.api.dto.reserva.VehiculoUpdateDto;
-import com.aparcar.api.entity.auth.AppUser;
+import com.aparcar.api.entity.auth.Visitante;
 import com.aparcar.api.entity.reserva.Vehiculo;
-import com.aparcar.api.entity.reserva.Visitante;
 import com.aparcar.api.exception.NotFoundException;
 import com.aparcar.api.exception.ValidationException;
 import com.aparcar.api.repository.ReservaRepository;
@@ -28,6 +27,10 @@ public class VehiculoService implements IVehiculoService {
 
     @Override
     public VehiculoResponseDto crear(VehiculoRequestDto dto) {
+        if (dto.getVisitanteId() == null) {
+            throw new ValidationException("El visitante es obligatorio.");
+        }
+
         Visitante visitante = visitanteRepository.findById(dto.getVisitanteId())
                 .orElseThrow(() -> new NotFoundException("Visitante no encontrado."));
 
@@ -45,6 +48,17 @@ public class VehiculoService implements IVehiculoService {
     }
 
     @Override
+    public VehiculoResponseDto crear(VehiculoRequestDto dto, String requesterEmail, boolean requesterIsAdmin) {
+        if (!requesterIsAdmin) {
+            Visitante propio = visitanteRepository.findByEmail(requesterEmail)
+                    .orElseThrow(() -> new NotFoundException("Visitante no encontrado."));
+            dto.setVisitanteId(propio.getId());
+        }
+
+        return crear(dto);
+    }
+
+    @Override
     public VehiculoResponseDto obtenerPorId(UUID id) {
         return toResponseDto(buscarPorId(id));
     }
@@ -57,6 +71,11 @@ public class VehiculoService implements IVehiculoService {
     @Override
     public List<VehiculoResponseDto> listarPorVisitante(UUID visitanteId) {
         return vehiculoRepository.findByVisitanteId(visitanteId).stream().map(this::toResponseDto).toList();
+    }
+
+    @Override
+    public List<VehiculoResponseDto> listarPropios(String email) {
+        return vehiculoRepository.findByVisitanteEmail(email).stream().map(this::toResponseDto).toList();
     }
 
     @Override
@@ -93,8 +112,7 @@ public class VehiculoService implements IVehiculoService {
             return;
         }
 
-        AppUser dueño = vehiculo.getVisitante().getAppUser();
-        if (dueño == null || !dueño.getEmail().equals(requesterEmail)) {
+        if (!vehiculo.getVisitante().getEmail().equals(requesterEmail)) {
             throw new AccessDeniedException("No podes modificar un vehiculo que no es tuyo.");
         }
     }

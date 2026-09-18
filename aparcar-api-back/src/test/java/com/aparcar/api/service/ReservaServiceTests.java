@@ -5,10 +5,11 @@ import com.aparcar.api.dto.reserva.ReservaRequestDto;
 import com.aparcar.api.entity.reserva.Cochera;
 import com.aparcar.api.entity.reserva.CocheraEstado;
 import com.aparcar.api.entity.reserva.CocheraTipo;
+import com.aparcar.api.entity.reserva.Reserva;
 import com.aparcar.api.entity.reserva.ReservaEstado;
 import com.aparcar.api.entity.reserva.Vehiculo;
 import com.aparcar.api.entity.reserva.VehiculoTipo;
-import com.aparcar.api.entity.reserva.Visitante;
+import com.aparcar.api.entity.auth.Visitante;
 import com.aparcar.api.exception.NotFoundException;
 import com.aparcar.api.exception.ValidationException;
 import com.aparcar.api.repository.CocheraRepository;
@@ -21,8 +22,10 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
+import org.springframework.security.access.AccessDeniedException;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -30,10 +33,15 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @UnitTests
 public class ReservaServiceTests {
+
+    private static final String ADMIN_EMAIL = "admin@test.com";
+    private static final String VISITANTE_EMAIL = "visitante@test.com";
 
     @Mock
     private ReservaRepository reservaRepository;
@@ -59,6 +67,7 @@ public class ReservaServiceTests {
     void setUp() {
         visitante = new Visitante();
         visitante.setId(UUID.randomUUID());
+        visitante.setEmail(VISITANTE_EMAIL);
 
         vehiculo = new Vehiculo();
         vehiculo.setId(UUID.randomUUID());
@@ -89,7 +98,7 @@ public class ReservaServiceTests {
     void crearLanzaNotFoundExceptionSiVisitanteNoExiste() {
         when(visitanteRepository.findById(visitante.getId())).thenReturn(Optional.empty());
 
-        assertThrows(NotFoundException.class, () -> reservaService.crear(dto));
+        assertThrows(NotFoundException.class, () -> reservaService.crear(dto, ADMIN_EMAIL, true));
     }
 
     @Test
@@ -98,7 +107,7 @@ public class ReservaServiceTests {
         vehiculo.setVisitante(new Visitante());
         vehiculo.getVisitante().setId(UUID.randomUUID());
 
-        assertThrows(ValidationException.class, () -> reservaService.crear(dto));
+        assertThrows(ValidationException.class, () -> reservaService.crear(dto, ADMIN_EMAIL, true));
     }
 
     @Test
@@ -106,7 +115,7 @@ public class ReservaServiceTests {
     void crearLanzaValidationExceptionSiTiposNoSonCompatibles() {
         cochera.setTipo(CocheraTipo.MOTO);
 
-        assertThrows(ValidationException.class, () -> reservaService.crear(dto));
+        assertThrows(ValidationException.class, () -> reservaService.crear(dto, ADMIN_EMAIL, true));
     }
 
     @Test
@@ -117,7 +126,7 @@ public class ReservaServiceTests {
                 .thenReturn(false);
         when(reservaRepository.save(any())).thenAnswer(i -> i.getArgument(0));
 
-        assertEquals(ReservaEstado.CONFIRMADA, reservaService.crear(dto).estado());
+        assertEquals(ReservaEstado.CONFIRMADA, reservaService.crear(dto, ADMIN_EMAIL, true).estado());
     }
 
     @Test
@@ -126,7 +135,7 @@ public class ReservaServiceTests {
         when(reservaRepository.existsByCocheraIdAndFechaAndEstado(cochera.getId(), dto.getFecha(), ReservaEstado.CONFIRMADA))
                 .thenReturn(true);
 
-        assertThrows(ValidationException.class, () -> reservaService.crear(dto));
+        assertThrows(ValidationException.class, () -> reservaService.crear(dto, ADMIN_EMAIL, true));
     }
 
     @Test
@@ -136,10 +145,88 @@ public class ReservaServiceTests {
                 .thenReturn(false);
         when(reservaRepository.save(any())).thenAnswer(i -> i.getArgument(0));
 
-        var response = reservaService.crear(dto);
+        var response = reservaService.crear(dto, ADMIN_EMAIL, true);
 
         assertEquals(ReservaEstado.CONFIRMADA, response.estado());
         assertEquals(cochera.getId(), response.cochera().id());
         assertEquals(vehiculo.getId(), response.vehiculo().id());
+    }
+
+    // Un visitante solo puede reservar a su nombre. Mandar el visitanteId de
+    // otro no deberia servirle de nada: el backend usa su cuenta y punto.
+    @Test
+    @DisplayName("crear ignora el visitanteId del dto cuando quien reserva no es ADMIN")
+    void crearIgnoraElVisitanteIdDelDtoSiNoEsAdmin() {
+        dto.setVisitanteId(UUID.randomUUID()); // intenta reservar para otro
+        when(visitanteRepository.findByEmail(VISITANTE_EMAIL)).thenReturn(Optional.of(visitante));
+        when(reservaRepository.existsByCocheraIdAndFechaAndEstado(cochera.getId(), dto.getFecha(), ReservaEstado.CONFIRMADA))
+                .thenReturn(false);
+        when(reservaRepository.save(any())).thenAnswer(i -> i.getArgument(0));
+
+        var response = reservaService.crear(dto, VISITANTE_EMAIL, false);
+
+        assertEquals(visitante.getId(), response.visitante().id());
+    }
+
+    @Test
+    @DisplayName("crear lanza ValidationException si un ADMIN no indica a nombre de quien va la reserva")
+    void crearLanzaValidationExceptionSiAdminNoIndicaVisitante() {
+        dto.setVisitanteId(null);
+
+        assertThrows(ValidationException.class, () -> reservaService.crear(dto, ADMIN_EMAIL, true));
+    }
+
+    @Test
+    @DisplayName("listar devuelve todas las reservas cuando quien pide es ADMIN")
+    void listarDevuelveTodasParaAdmin() {
+        when(reservaRepository.findAll()).thenReturn(List.of(reservaDe(visitante)));
+
+        var response = reservaService.listar(ADMIN_EMAIL, true);
+
+        assertEquals(1, response.size());
+        verify(reservaRepository, never()).findByVisitanteEmail(any());
+    }
+
+    // El filtro es del backend a proposito: antes GET /reservas devolvia todas
+    // las reservas del sistema a cualquier autenticado.
+    @Test
+    @DisplayName("listar devuelve solo las reservas propias cuando quien pide no es ADMIN")
+    void listarDevuelveSoloLasPropiasParaVisitante() {
+        when(reservaRepository.findByVisitanteEmail(VISITANTE_EMAIL)).thenReturn(List.of(reservaDe(visitante)));
+
+        var response = reservaService.listar(VISITANTE_EMAIL, false);
+
+        assertEquals(1, response.size());
+        verify(reservaRepository, never()).findAll();
+    }
+
+    @Test
+    @DisplayName("obtenerPorId niega el acceso a una reserva de otro visitante")
+    void obtenerPorIdNiegaElAccesoAUnaReservaAjena() {
+        Reserva ajena = reservaDe(visitante);
+        when(reservaRepository.findById(ajena.getId())).thenReturn(Optional.of(ajena));
+
+        assertThrows(AccessDeniedException.class,
+                () -> reservaService.obtenerPorId(ajena.getId(), "otro@test.com", false));
+    }
+
+    @Test
+    @DisplayName("obtenerPorId deja al ADMIN ver cualquier reserva")
+    void obtenerPorIdDejaAlAdminVerCualquierReserva() {
+        Reserva ajena = reservaDe(visitante);
+        when(reservaRepository.findById(ajena.getId())).thenReturn(Optional.of(ajena));
+
+        assertEquals(ajena.getId(), reservaService.obtenerPorId(ajena.getId(), ADMIN_EMAIL, true).id());
+    }
+
+    private Reserva reservaDe(Visitante dueño) {
+        Reserva reserva = new Reserva();
+        reserva.setId(UUID.randomUUID());
+        reserva.setFecha(LocalDate.now());
+        reserva.setVisitante(dueño);
+        reserva.setVehiculo(vehiculo);
+        reserva.setCochera(cochera);
+        reserva.setEstado(ReservaEstado.CONFIRMADA);
+        return reserva;
     }
 }

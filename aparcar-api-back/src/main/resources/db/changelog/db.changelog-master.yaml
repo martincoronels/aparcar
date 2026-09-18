@@ -5,3 +5,5 @@ databaseChangeLog:
       file: db/changelog/002-visitantes-vehiculos-cocheras-reservas.yaml
   - include:
       file: db/changelog/003-visitante-app-user.yaml
+  - include:
+      file: db/changelog/004-unificar-visitante-cuenta.yaml

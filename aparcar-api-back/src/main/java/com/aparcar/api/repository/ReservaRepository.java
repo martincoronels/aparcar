@@ -20,4 +20,8 @@ public interface ReservaRepository extends JpaRepository<Reserva, UUID> {
     List<Reserva> findByCocheraIdAndEstado(UUID cocheraId, ReservaEstado estado);
 
     boolean existsByVehiculoId(UUID vehiculoId);
+
+    List<Reserva> findByVisitanteEmail(String email);
+
+    boolean existsByVisitanteId(UUID visitanteId);
 }

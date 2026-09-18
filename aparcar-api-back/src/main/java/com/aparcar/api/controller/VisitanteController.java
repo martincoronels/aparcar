@@ -1,6 +1,7 @@
 package com.aparcar.api.controller;
 
-import com.aparcar.api.dto.reserva.VisitanteRequestDto;
+import com.aparcar.api.dto.reserva.VisitanteAltaDto;
+import com.aparcar.api.dto.reserva.VisitanteAltaResponseDto;
 import com.aparcar.api.dto.reserva.VisitanteResponseDto;
 import com.aparcar.api.dto.reserva.VisitanteUpdateDto;
 import com.aparcar.api.service.IVisitanteService;
@@ -26,9 +27,13 @@ import java.util.UUID;
 public class VisitanteController {
     private final IVisitanteService visitanteService;
 
-    @PostMapping
-    public ResponseEntity<VisitanteResponseDto> crear(@Valid @RequestBody VisitanteRequestDto dto) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(visitanteService.crear(dto));
+    /**
+     * Alta operativa: cuenta + vehiculo + reserva del dia, en una transaccion.
+     * Solo ADMIN (ver la configuracion de seguridad).
+     */
+    @PostMapping("/alta")
+    public ResponseEntity<VisitanteAltaResponseDto> alta(@Valid @RequestBody VisitanteAltaDto dto) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(visitanteService.altaConReserva(dto));
     }
 
     @GetMapping
@@ -40,13 +45,6 @@ public class VisitanteController {
     @GetMapping("/me")
     public ResponseEntity<VisitanteResponseDto> obtenerPropio(Authentication authentication) {
         return ResponseEntity.ok(visitanteService.obtenerPropio(authentication.getName()));
-    }
-
-    @PostMapping("/me")
-    public ResponseEntity<VisitanteResponseDto> crearPropio(
-            @Valid @RequestBody VisitanteRequestDto dto, Authentication authentication) {
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(visitanteService.crearPropio(authentication.getName(), dto));
     }
 
     @PutMapping("/me")
