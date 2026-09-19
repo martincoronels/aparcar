@@ -14,6 +14,20 @@ const editPerfilSchema = z.object({
   email: z.string().min(1, "El email es obligatorio").email("Ingresa un correo válido"),
 });
 
+const passwordSchema = z
+  .object({
+    passwordActual: z.string().min(1, "Ingresá tu contraseña actual"),
+    passwordNueva: z
+      .string()
+      .min(8, "La contraseña nueva debe tener al menos 8 caracteres")
+      .max(100, "La contraseña nueva no puede superar los 100 caracteres"),
+    passwordRepetida: z.string().min(1, "Repetí la contraseña nueva"),
+  })
+  .refine((d) => d.passwordNueva === d.passwordRepetida, {
+    message: "Las contraseñas no coinciden",
+    path: ["passwordRepetida"],
+  });
+
 const vehiculoSchema = z.object({
   patente: z
     .string()
@@ -39,9 +53,11 @@ export default function MiPerfilContent({ onVehiculosCambiaron }) {
   const [vehiculos, setVehiculos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [editandoPerfil, setEditandoPerfil] = useState(false);
+  const [cambiandoPassword, setCambiandoPassword] = useState(false);
   const [editandoVehiculoId, setEditandoVehiculoId] = useState(null);
 
   const editPerfilForm = useForm({ resolver: zodResolver(editPerfilSchema) });
+  const passwordForm = useForm({ resolver: zodResolver(passwordSchema) });
   const vehiculoForm = useForm({
     resolver: zodResolver(vehiculoSchema),
     defaultValues: { patente: "", tipo: "AUTO" },
@@ -88,6 +104,25 @@ export default function MiPerfilContent({ onVehiculosCambiaron }) {
       setEditandoPerfil(false);
     } catch (err) {
       toast.error(err.response?.data?.message || "No se pudieron actualizar tus datos.");
+    }
+  };
+
+  const startCambiandoPassword = () => {
+    passwordForm.reset({ passwordActual: "", passwordNueva: "", passwordRepetida: "" });
+    setCambiandoPassword(true);
+  };
+
+  const onCambiarPassword = async (data) => {
+    try {
+      await api.put("/api/v1/visitantes/me/password", {
+        passwordActual: data.passwordActual,
+        passwordNueva: data.passwordNueva,
+      });
+      toast.success("Tu contraseña se cambió correctamente");
+      passwordForm.reset({ passwordActual: "", passwordNueva: "", passwordRepetida: "" });
+      setCambiandoPassword(false);
+    } catch (err) {
+      toast.error(err.response?.data?.message || "No se pudo cambiar la contraseña.");
     }
   };
 
@@ -165,15 +200,26 @@ export default function MiPerfilContent({ onVehiculosCambiaron }) {
               </p>
             </div>
 
-            {!editandoPerfil && (
-              <button
-                type="button"
-                onClick={startEditandoPerfil}
-                className="shrink-0 rounded-lg border border-[#002147]/20 px-3 py-2 text-xs font-semibold text-[#002147] hover:bg-[#002147]/5 transition-colors"
-              >
-                Editar mis datos
-              </button>
-            )}
+            <div className="flex shrink-0 gap-2">
+              {!editandoPerfil && (
+                <button
+                  type="button"
+                  onClick={startEditandoPerfil}
+                  className="rounded-lg border border-[#002147]/20 px-3 py-2 text-xs font-semibold text-[#002147] hover:bg-[#002147]/5 transition-colors"
+                >
+                  Editar mis datos
+                </button>
+              )}
+              {!cambiandoPassword && (
+                <button
+                  type="button"
+                  onClick={startCambiandoPassword}
+                  className="rounded-lg border border-[#002147]/20 px-3 py-2 text-xs font-semibold text-[#002147] hover:bg-[#002147]/5 transition-colors"
+                >
+                  Cambiar contraseña
+                </button>
+              )}
+            </div>
           </div>
 
           {editandoPerfil && (
@@ -206,6 +252,79 @@ export default function MiPerfilContent({ onVehiculosCambiaron }) {
                 <button
                   type="button"
                   onClick={() => setEditandoPerfil(false)}
+                  className="rounded-xl px-4 py-2.5 text-sm font-medium text-[#002147]/70 hover:bg-[#002147]/5 transition-colors"
+                >
+                  Cancelar
+                </button>
+              </div>
+            </form>
+          )}
+
+          {cambiandoPassword && (
+            <form
+              className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2"
+              onSubmit={passwordForm.handleSubmit(onCambiarPassword)}
+            >
+              <div className="sm:col-span-2">
+                <label className={labelClasses} htmlFor="password-actual">Contraseña actual</label>
+                <input
+                  id="password-actual"
+                  type="password"
+                  autoComplete="current-password"
+                  {...passwordForm.register("passwordActual")}
+                  className={inputClasses}
+                />
+                {passwordForm.formState.errors.passwordActual && (
+                  <p className="mt-1 text-sm text-red-500">
+                    {passwordForm.formState.errors.passwordActual.message}
+                  </p>
+                )}
+                <p className="mt-1 text-xs text-[#002147]/50">
+                  Si tu cuenta la creó un administrador, tu contraseña actual es tu documento.
+                </p>
+              </div>
+              <div>
+                <label className={labelClasses} htmlFor="password-nueva">Contraseña nueva</label>
+                <input
+                  id="password-nueva"
+                  type="password"
+                  autoComplete="new-password"
+                  {...passwordForm.register("passwordNueva")}
+                  className={inputClasses}
+                  placeholder="Mínimo 8 caracteres"
+                />
+                {passwordForm.formState.errors.passwordNueva && (
+                  <p className="mt-1 text-sm text-red-500">
+                    {passwordForm.formState.errors.passwordNueva.message}
+                  </p>
+                )}
+              </div>
+              <div>
+                <label className={labelClasses} htmlFor="password-repetida">Repetir contraseña nueva</label>
+                <input
+                  id="password-repetida"
+                  type="password"
+                  autoComplete="new-password"
+                  {...passwordForm.register("passwordRepetida")}
+                  className={inputClasses}
+                />
+                {passwordForm.formState.errors.passwordRepetida && (
+                  <p className="mt-1 text-sm text-red-500">
+                    {passwordForm.formState.errors.passwordRepetida.message}
+                  </p>
+                )}
+              </div>
+              <div className="flex gap-2 sm:col-span-2">
+                <button
+                  type="submit"
+                  disabled={passwordForm.formState.isSubmitting}
+                  className="rounded-xl bg-[#0cb7f2] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#002147] transition-all disabled:opacity-50"
+                >
+                  Guardar contraseña
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setCambiandoPassword(false)}
                   className="rounded-xl px-4 py-2.5 text-sm font-medium text-[#002147]/70 hover:bg-[#002147]/5 transition-colors"
                 >
                   Cancelar

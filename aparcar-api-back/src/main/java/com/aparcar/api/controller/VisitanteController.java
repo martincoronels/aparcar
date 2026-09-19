@@ -1,5 +1,6 @@
 package com.aparcar.api.controller;
 
+import com.aparcar.api.dto.auth.ChangePasswordDto;
 import com.aparcar.api.dto.reserva.VisitanteAltaDto;
 import com.aparcar.api.dto.reserva.VisitanteAltaResponseDto;
 import com.aparcar.api.dto.reserva.VisitanteResponseDto;
@@ -51,6 +52,13 @@ public class VisitanteController {
     public ResponseEntity<VisitanteResponseDto> actualizarPropio(
             @Valid @RequestBody VisitanteUpdateDto dto, Authentication authentication) {
         return ResponseEntity.ok(visitanteService.actualizarPropio(authentication.getName(), dto));
+    }
+
+    @PutMapping("/me/password")
+    public ResponseEntity<Void> cambiarPasswordPropia(
+            @Valid @RequestBody ChangePasswordDto dto, Authentication authentication) {
+        visitanteService.cambiarPasswordPropia(authentication.getName(), dto);
+        return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/{id}")

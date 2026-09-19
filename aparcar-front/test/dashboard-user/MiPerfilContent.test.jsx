@@ -219,3 +219,106 @@ describe("MiPerfilContent", () => {
     await waitFor(() => expect(deleteMock).toHaveBeenCalledWith("/api/v1/vehiculos/veh1"));
   });
 });
+
+describe("MiPerfilContent: cambiar contraseña", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  async function abrirFormulario() {
+    mockPerfil();
+    const user = userEvent.setup();
+    render(<MiPerfilContent />);
+    await screen.findByText("Juan Perez");
+    await user.click(screen.getByRole("button", { name: /cambiar contraseña/i }));
+    return user;
+  }
+
+  it("el formulario esta oculto hasta tocar 'Cambiar contraseña'", async () => {
+    mockPerfil();
+    render(<MiPerfilContent />);
+    await screen.findByText("Juan Perez");
+
+    expect(screen.queryByLabelText("Contraseña actual")).not.toBeInTheDocument();
+  });
+
+  it("manda la actual y la nueva a PUT /api/v1/visitantes/me/password", async () => {
+    const putMock = vi.fn().mockResolvedValue({ data: {} });
+    api.put = putMock;
+    const user = await abrirFormulario();
+
+    await user.type(screen.getByLabelText("Contraseña actual"), "30111222");
+    await user.type(screen.getByLabelText("Contraseña nueva"), "claveNueva1");
+    await user.type(screen.getByLabelText("Repetir contraseña nueva"), "claveNueva1");
+    await user.click(screen.getByRole("button", { name: /guardar contraseña/i }));
+
+    await waitFor(() =>
+      expect(putMock).toHaveBeenCalledWith("/api/v1/visitantes/me/password", {
+        passwordActual: "30111222",
+        passwordNueva: "claveNueva1",
+      })
+    );
+    expect(toastSuccessMock).toHaveBeenCalledWith("Tu contraseña se cambió correctamente");
+  });
+
+  // Pedir la actual es lo que evita que alguien con la sesión abierta deje al
+  // dueño afuera de su cuenta.
+  it("exige la contraseña actual", async () => {
+    const putMock = vi.fn();
+    api.put = putMock;
+    const user = await abrirFormulario();
+
+    await user.type(screen.getByLabelText("Contraseña nueva"), "claveNueva1");
+    await user.type(screen.getByLabelText("Repetir contraseña nueva"), "claveNueva1");
+    await user.click(screen.getByRole("button", { name: /guardar contraseña/i }));
+
+    expect(await screen.findByText("Ingresá tu contraseña actual")).toBeInTheDocument();
+    expect(putMock).not.toHaveBeenCalled();
+  });
+
+  it("rechaza una contraseña nueva de menos de 8 caracteres", async () => {
+    const putMock = vi.fn();
+    api.put = putMock;
+    const user = await abrirFormulario();
+
+    await user.type(screen.getByLabelText("Contraseña actual"), "30111222");
+    await user.type(screen.getByLabelText("Contraseña nueva"), "corta");
+    await user.type(screen.getByLabelText("Repetir contraseña nueva"), "corta");
+    await user.click(screen.getByRole("button", { name: /guardar contraseña/i }));
+
+    expect(
+      await screen.findByText("La contraseña nueva debe tener al menos 8 caracteres")
+    ).toBeInTheDocument();
+    expect(putMock).not.toHaveBeenCalled();
+  });
+
+  it("avisa si la repeticion no coincide", async () => {
+    const putMock = vi.fn();
+    api.put = putMock;
+    const user = await abrirFormulario();
+
+    await user.type(screen.getByLabelText("Contraseña actual"), "30111222");
+    await user.type(screen.getByLabelText("Contraseña nueva"), "claveNueva1");
+    await user.type(screen.getByLabelText("Repetir contraseña nueva"), "otraDistinta1");
+    await user.click(screen.getByRole("button", { name: /guardar contraseña/i }));
+
+    expect(await screen.findByText("Las contraseñas no coinciden")).toBeInTheDocument();
+    expect(putMock).not.toHaveBeenCalled();
+  });
+
+  it("si el backend rechaza el cambio, muestra su mensaje", async () => {
+    api.put = vi.fn().mockRejectedValue({
+      response: { data: { message: "La contraseña actual no es correcta." } },
+    });
+    const user = await abrirFormulario();
+
+    await user.type(screen.getByLabelText("Contraseña actual"), "equivocada");
+    await user.type(screen.getByLabelText("Contraseña nueva"), "claveNueva1");
+    await user.type(screen.getByLabelText("Repetir contraseña nueva"), "claveNueva1");
+    await user.click(screen.getByRole("button", { name: /guardar contraseña/i }));
+
+    await waitFor(() =>
+      expect(toastErrorMock).toHaveBeenCalledWith("La contraseña actual no es correcta.")
+    );
+  });
+});

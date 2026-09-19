@@ -83,6 +83,24 @@ public class ReservaService implements IReservaService {
         return reservas.stream().map(this::toResponseDto).toList();
     }
 
+    @Override
+    @Transactional
+    public ReservaResponseDto cancelar(UUID id, String requesterEmail, boolean requesterIsAdmin) {
+        Reserva reserva = buscarPorId(id);
+
+        if (!requesterIsAdmin && !reserva.getVisitante().getEmail().equals(requesterEmail)) {
+            throw new AccessDeniedException("No podes cancelar una reserva que no es tuya.");
+        }
+
+        if (reserva.getEstado() == ReservaEstado.CANCELADA) {
+            throw new ValidationException("La reserva ya estaba cancelada.");
+        }
+
+        reserva.setEstado(ReservaEstado.CANCELADA);
+
+        return toResponseDto(reservaRepository.save(reserva));
+    }
+
     /**
      * Un visitante solo puede reservar a su nombre, asi que para un USER el
      * visitanteId del request se ignora y se usa la cuenta autenticada. Solo el

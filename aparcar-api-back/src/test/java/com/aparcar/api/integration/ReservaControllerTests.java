@@ -27,6 +27,7 @@ import java.time.LocalDate;
 import java.util.Set;
 import java.util.UUID;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.springframework.security.core.context.SecurityContextHolder.getContext;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.securityContext;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -391,6 +392,87 @@ public class ReservaControllerTests {
 
         mockMvc.perform(get("/api/v1/reservas/" + ajena.getId()).with(securityContext(context)))
                 .andExpect(status().isForbidden());
+    }
+
+    // ---- Cancelar ----
+
+    // Lo que justifica cancelar en vez de borrar: la fila sigue ahi con su
+    // historial, pero la cochera vuelve a estar libre para esa fecha.
+    @Test
+    @WithMockUser(authorities = "ADMIN")
+    @DisplayName("[Caja negra] POST /api/v1/reservas/{id}/cancelar libera la cochera sin borrar la reserva")
+    void cancelarLiberaLaCocheraSinBorrarLaReserva() throws Exception {
+        Visitante visitante = crearVisitante("30111222");
+        Vehiculo vehiculo = crearVehiculo("ABC123", VehiculoTipo.AUTO, visitante);
+        Cochera cochera = crearCochera("A-01", CocheraTipo.AUTO);
+        Reserva reserva = crearReserva(visitante, vehiculo, cochera);
+        var context = getContext();
+
+        mockMvc.perform(post("/api/v1/reservas/" + reserva.getId() + "/cancelar")
+                        .with(securityContext(context)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.estado").value("CANCELADA"));
+
+        // La reserva no se borro...
+        assertEquals(1, reservaRepository.count());
+
+        // ...y la cochera volvio a aparecer como disponible para hoy.
+        mockMvc.perform(get("/api/v1/cocheras/disponibles")
+                        .param("fecha", LocalDate.now().toString())
+                        .param("tipoVehiculo", "AUTO")
+                        .with(securityContext(context)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[?(@.numero == 'A-01')]").exists());
+    }
+
+    @Test
+    @WithMockUser(authorities = "ADMIN")
+    @DisplayName("[Caja negra] cancelar dos veces la misma reserva devuelve 400")
+    void cancelarDosVecesDevuelve400() throws Exception {
+        Visitante visitante = crearVisitante("30111222");
+        Vehiculo vehiculo = crearVehiculo("ABC123", VehiculoTipo.AUTO, visitante);
+        Reserva reserva = crearReserva(visitante, vehiculo, crearCochera("A-01", CocheraTipo.AUTO));
+        var context = getContext();
+
+        mockMvc.perform(post("/api/v1/reservas/" + reserva.getId() + "/cancelar")
+                        .with(securityContext(context)))
+                .andExpect(status().isOk());
+        mockMvc.perform(post("/api/v1/reservas/" + reserva.getId() + "/cancelar")
+                        .with(securityContext(context)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @WithMockUser(username = "dueño@test.com", authorities = "USER")
+    @DisplayName("[Caja negra] un visitante puede cancelar su propia reserva")
+    void unVisitantePuedeCancelarSuPropiaReserva() throws Exception {
+        Visitante dueño = crearVisitante("30111222", "dueño@test.com");
+        Reserva propia = crearReserva(dueño, crearVehiculo("ABC123", VehiculoTipo.AUTO, dueño),
+                crearCochera("A-01", CocheraTipo.AUTO));
+        var context = getContext();
+
+        mockMvc.perform(post("/api/v1/reservas/" + propia.getId() + "/cancelar")
+                        .with(securityContext(context)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.estado").value("CANCELADA"));
+    }
+
+    @Test
+    @WithMockUser(username = "dueño@test.com", authorities = "USER")
+    @DisplayName("[Caja negra] un visitante no puede cancelar la reserva de otro")
+    void unVisitanteNoPuedeCancelarLaReservaDeOtro() throws Exception {
+        crearVisitante("30111222", "dueño@test.com");
+        Visitante otro = crearVisitante("30111333", "otro@test.com");
+        Reserva ajena = crearReserva(otro, crearVehiculo("XYZ999", VehiculoTipo.AUTO, otro),
+                crearCochera("A-01", CocheraTipo.AUTO));
+        var context = getContext();
+
+        mockMvc.perform(post("/api/v1/reservas/" + ajena.getId() + "/cancelar")
+                        .with(securityContext(context)))
+                .andExpect(status().isForbidden());
+
+        assertEquals(ReservaEstado.CONFIRMADA,
+                reservaRepository.findById(ajena.getId()).orElseThrow().getEstado());
     }
 
     private Reserva crearReserva(Visitante visitante, Vehiculo vehiculo, Cochera cochera) {

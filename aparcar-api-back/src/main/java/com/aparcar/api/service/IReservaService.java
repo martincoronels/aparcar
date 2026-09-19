@@ -40,4 +40,21 @@ public interface IReservaService {
      * El ADMIN ve todas las reservas del sistema; un visitante solo las suyas.
      */
     List<ReservaResponseDto> listar(String requesterEmail, boolean requesterIsAdmin);
+
+    /**
+     * Da de baja una reserva pasandola a CANCELADA, lo que libera la cochera
+     * para esa fecha.
+     *
+     * <p>No borra la fila: el sistema ya cancela en vez de borrar cuando se
+     * deshabilita una cochera, y conservar la reserva deja ver que existio y
+     * quien la habia hecho.
+     *
+     * <p>Un visitante solo puede cancelar las suyas; el ADMIN, cualquiera.
+     *
+     * @throws NotFoundException   Si no existe una reserva con ese id.
+     * @throws ValidationException Si la reserva ya estaba cancelada.
+     * @throws org.springframework.security.access.AccessDeniedException Si quien pide no es ADMIN
+     *                                                                   ni el dueño de la reserva.
+     */
+    ReservaResponseDto cancelar(UUID id, String requesterEmail, boolean requesterIsAdmin);
 }

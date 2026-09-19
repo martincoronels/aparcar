@@ -1,6 +1,7 @@
 package com.aparcar.api.service;
 
 import com.aparcar.api.config.UnitTests;
+import com.aparcar.api.dto.auth.ChangePasswordDto;
 import com.aparcar.api.dto.reserva.CocheraResponseDto;
 import com.aparcar.api.dto.reserva.ReservaRequestDto;
 import com.aparcar.api.dto.reserva.ReservaResponseDto;
@@ -281,6 +282,70 @@ public class VisitanteServiceTests {
 
         assertThrows(ValidationException.class,
                 () -> visitanteService.actualizarPropio(visitante.getEmail(), update));
+    }
+
+    // ---- Cambio de contraseña ----
+
+    // Pedir la actual es lo que evita que alguien que agarre una sesion abierta
+    // deje al dueño afuera de su cuenta.
+    @Test
+    @DisplayName("cambiarPasswordPropia rechaza el cambio si la contraseña actual no coincide")
+    void cambiarPasswordRechazaSiLaActualNoCoincide() {
+        Visitante visitante = unVisitante();
+        visitante.setPassword("hash-viejo");
+        when(visitanteRepository.findByEmail(visitante.getEmail())).thenReturn(Optional.of(visitante));
+        when(passwordEncoder.matches("equivocada", "hash-viejo")).thenReturn(false);
+
+        assertThrows(ValidationException.class,
+                () -> visitanteService.cambiarPasswordPropia(visitante.getEmail(), cambio("equivocada", "nuevaSegura1")));
+        verify(visitanteRepository, never()).save(any());
+    }
+
+    // Sin esto, "cambiar" por la misma contraseña devolveria exito y el
+    // visitante creeria que dejo de usar su documento como clave.
+    @Test
+    @DisplayName("cambiarPasswordPropia rechaza una contraseña nueva igual a la actual")
+    void cambiarPasswordRechazaSiLaNuevaEsIgualALaActual() {
+        Visitante visitante = unVisitante();
+        visitante.setPassword("hash-viejo");
+        when(visitanteRepository.findByEmail(visitante.getEmail())).thenReturn(Optional.of(visitante));
+        when(passwordEncoder.matches("30111222", "hash-viejo")).thenReturn(true);
+
+        assertThrows(ValidationException.class,
+                () -> visitanteService.cambiarPasswordPropia(visitante.getEmail(), cambio("30111222", "30111222")));
+        verify(visitanteRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("cambiarPasswordPropia guarda la contraseña nueva hasheada")
+    void cambiarPasswordGuardaLaNuevaHasheada() {
+        Visitante visitante = unVisitante();
+        visitante.setPassword("hash-viejo");
+        when(visitanteRepository.findByEmail(visitante.getEmail())).thenReturn(Optional.of(visitante));
+        when(passwordEncoder.matches("30111222", "hash-viejo")).thenReturn(true);
+        when(passwordEncoder.matches("nuevaSegura1", "hash-viejo")).thenReturn(false);
+
+        visitanteService.cambiarPasswordPropia(visitante.getEmail(), cambio("30111222", "nuevaSegura1"));
+
+        ArgumentCaptor<Visitante> captor = ArgumentCaptor.forClass(Visitante.class);
+        verify(visitanteRepository).save(captor.capture());
+        assertEquals("hash:nuevaSegura1", captor.getValue().getPassword());
+    }
+
+    @Test
+    @DisplayName("cambiarPasswordPropia lanza NotFoundException si no existe una cuenta con ese email")
+    void cambiarPasswordLanzaNotFoundExceptionSiNoExisteLaCuenta() {
+        when(visitanteRepository.findByEmail("nadie@test.com")).thenReturn(Optional.empty());
+
+        assertThrows(NotFoundException.class,
+                () -> visitanteService.cambiarPasswordPropia("nadie@test.com", cambio("x", "nuevaSegura1")));
+    }
+
+    private static ChangePasswordDto cambio(String actual, String nueva) {
+        ChangePasswordDto dto = new ChangePasswordDto();
+        dto.setPasswordActual(actual);
+        dto.setPasswordNueva(nueva);
+        return dto;
     }
 
     private Visitante unVisitante() {

@@ -122,8 +122,10 @@ public class DevSecurityConfig {
                         // Los datos propios del visitante van primero: si no,
                         // caerian en la regla de ADMIN de /api/v1/visitantes/**
                         // que esta abajo.
-                        .requestMatchers("/api/v1/visitantes/me")
-                        .authenticated()
+                        .requestMatchers(
+                                "/api/v1/visitantes/me",
+                                "/api/v1/visitantes/me/**"
+                        ).authenticated()
 
                         // Solo ADMIN puede gestionar usuarios, registrar
                         // nuevos usuarios internos, dar de alta visitantes y

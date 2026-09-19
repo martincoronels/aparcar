@@ -219,6 +219,66 @@ public class ReservaServiceTests {
         assertEquals(ajena.getId(), reservaService.obtenerPorId(ajena.getId(), ADMIN_EMAIL, true).id());
     }
 
+    // ---- Cancelar ----
+
+    // Cancelar no borra: deja la fila en CANCELADA para conservar el historial,
+    // igual que ya hacia el sistema al deshabilitar una cochera.
+    @Test
+    @DisplayName("cancelar pasa la reserva a CANCELADA sin borrarla")
+    void cancelarPasaLaReservaACancelada() {
+        Reserva propia = reservaDe(visitante);
+        when(reservaRepository.findById(propia.getId())).thenReturn(Optional.of(propia));
+        when(reservaRepository.save(any())).thenAnswer(i -> i.getArgument(0));
+
+        var response = reservaService.cancelar(propia.getId(), VISITANTE_EMAIL, false);
+
+        assertEquals(ReservaEstado.CANCELADA, response.estado());
+        verify(reservaRepository, never()).delete(any());
+    }
+
+    @Test
+    @DisplayName("cancelar niega el acceso si la reserva es de otro visitante")
+    void cancelarNiegaElAccesoAUnaReservaAjena() {
+        Reserva ajena = reservaDe(visitante);
+        when(reservaRepository.findById(ajena.getId())).thenReturn(Optional.of(ajena));
+
+        assertThrows(AccessDeniedException.class,
+                () -> reservaService.cancelar(ajena.getId(), "otro@test.com", false));
+        verify(reservaRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("cancelar deja al ADMIN dar de baja cualquier reserva")
+    void cancelarDejaAlAdminDarDeBajaCualquierReserva() {
+        Reserva ajena = reservaDe(visitante);
+        when(reservaRepository.findById(ajena.getId())).thenReturn(Optional.of(ajena));
+        when(reservaRepository.save(any())).thenAnswer(i -> i.getArgument(0));
+
+        assertEquals(ReservaEstado.CANCELADA,
+                reservaService.cancelar(ajena.getId(), ADMIN_EMAIL, true).estado());
+    }
+
+    @Test
+    @DisplayName("cancelar lanza ValidationException si la reserva ya estaba cancelada")
+    void cancelarLanzaValidationExceptionSiYaEstabaCancelada() {
+        Reserva propia = reservaDe(visitante);
+        propia.setEstado(ReservaEstado.CANCELADA);
+        when(reservaRepository.findById(propia.getId())).thenReturn(Optional.of(propia));
+
+        assertThrows(ValidationException.class,
+                () -> reservaService.cancelar(propia.getId(), VISITANTE_EMAIL, false));
+        verify(reservaRepository, never()).save(any());
+    }
+
+    @Test
+    @DisplayName("cancelar lanza NotFoundException si la reserva no existe")
+    void cancelarLanzaNotFoundExceptionSiNoExiste() {
+        UUID id = UUID.randomUUID();
+        when(reservaRepository.findById(id)).thenReturn(Optional.empty());
+
+        assertThrows(NotFoundException.class, () -> reservaService.cancelar(id, ADMIN_EMAIL, true));
+    }
+
     private Reserva reservaDe(Visitante dueño) {
         Reserva reserva = new Reserva();
         reserva.setId(UUID.randomUUID());

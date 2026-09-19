@@ -158,6 +158,104 @@ describe("ReservasContent en modo admin", () => {
   });
 });
 
+describe("ReservasContent: cancelar una reserva", () => {
+  const RESERVA_CONFIRMADA = {
+    id: "r1",
+    fecha: "2026-01-01",
+    estado: "CONFIRMADA",
+    visitante: { nombre: "Juan Perez" },
+    vehiculo: { patente: "ABC123" },
+    cochera: { numero: "A-01", sector: "Planta Baja" },
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.spyOn(window, "confirm").mockReturnValue(true);
+  });
+
+  it("cancela con POST /api/v1/reservas/{id}/cancelar", async () => {
+    mockData({ reservas: [RESERVA_CONFIRMADA] });
+    postMock.mockResolvedValue({ data: {} });
+    const user = userEvent.setup();
+    render(<ReservasContent modo="admin" />);
+    await screen.findByText("Juan Perez — ABC123");
+
+    await user.click(screen.getByRole("button", { name: /^cancelar$/i }));
+
+    await waitFor(() =>
+      expect(postMock).toHaveBeenCalledWith("/api/v1/reservas/r1/cancelar")
+    );
+    expect(toastSuccessMock).toHaveBeenCalledWith("Reserva cancelada correctamente");
+  });
+
+  it("pide confirmacion y no hace nada si se cancela el dialogo", async () => {
+    window.confirm.mockReturnValue(false);
+    mockData({ reservas: [RESERVA_CONFIRMADA] });
+    const user = userEvent.setup();
+    render(<ReservasContent modo="admin" />);
+    await screen.findByText("Juan Perez — ABC123");
+
+    await user.click(screen.getByRole("button", { name: /^cancelar$/i }));
+
+    expect(postMock).not.toHaveBeenCalled();
+  });
+
+  // Cancelar libera la cochera, así que la cuadrícula de ocupación tiene que
+  // enterarse igual que cuando se crea una reserva.
+  it("avisa que la ocupacion cambio", async () => {
+    mockData({ reservas: [RESERVA_CONFIRMADA] });
+    postMock.mockResolvedValue({ data: {} });
+    const onOcupacionCambiada = vi.fn();
+    const user = userEvent.setup();
+    render(<ReservasContent modo="admin" onOcupacionCambiada={onOcupacionCambiada} />);
+    await screen.findByText("Juan Perez — ABC123");
+
+    await user.click(screen.getByRole("button", { name: /^cancelar$/i }));
+
+    await waitFor(() => expect(onOcupacionCambiada).toHaveBeenCalled());
+  });
+
+  // Cancelar no borra la fila: queda con el badge CANCELADA, y ya no se puede
+  // volver a cancelar.
+  it("no ofrece cancelar una reserva que ya esta cancelada", async () => {
+    mockData({ reservas: [{ ...RESERVA_CONFIRMADA, estado: "CANCELADA" }] });
+    render(<ReservasContent modo="admin" />);
+
+    expect(await screen.findByText("CANCELADA")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^cancelar$/i })).not.toBeInTheDocument();
+  });
+
+  it("el visitante tambien puede cancelar desde su dashboard", async () => {
+    mockData({ vehiculos: [vehiculo()], reservas: [RESERVA_CONFIRMADA] });
+    postMock.mockResolvedValue({ data: {} });
+    const user = userEvent.setup();
+    render(<ReservasContent modo="user" />);
+    await screen.findByText("Mis reservas");
+
+    await user.click(screen.getByRole("button", { name: /^cancelar$/i }));
+
+    await waitFor(() =>
+      expect(postMock).toHaveBeenCalledWith("/api/v1/reservas/r1/cancelar")
+    );
+  });
+
+  it("si el backend rechaza la cancelacion, muestra su mensaje", async () => {
+    mockData({ reservas: [RESERVA_CONFIRMADA] });
+    postMock.mockRejectedValue({
+      response: { data: { message: "La reserva ya estaba cancelada." } },
+    });
+    const user = userEvent.setup();
+    render(<ReservasContent modo="admin" />);
+    await screen.findByText("Juan Perez — ABC123");
+
+    await user.click(screen.getByRole("button", { name: /^cancelar$/i }));
+
+    await waitFor(() =>
+      expect(toastErrorMock).toHaveBeenCalledWith("La reserva ya estaba cancelada.")
+    );
+  });
+});
+
 describe("ReservasContent en modo visitante", () => {
   beforeEach(() => {
     vi.clearAllMocks();

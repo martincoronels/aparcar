@@ -1,5 +1,6 @@
 package com.aparcar.api.service.impl;
 
+import com.aparcar.api.dto.auth.ChangePasswordDto;
 import com.aparcar.api.dto.reserva.ReservaRequestDto;
 import com.aparcar.api.dto.reserva.ReservaResponseDto;
 import com.aparcar.api.dto.reserva.VehiculoRequestDto;
@@ -107,6 +108,24 @@ public class VisitanteService implements IVisitanteService {
         visitante.setEmail(dto.getEmail());
 
         return toResponseDto(visitanteRepository.save(visitante));
+    }
+
+    @Override
+    public void cambiarPasswordPropia(String email, ChangePasswordDto dto) {
+        Visitante visitante = buscarPorEmail(email);
+
+        if (!passwordEncoder.matches(dto.getPasswordActual(), visitante.getPassword())) {
+            throw new ValidationException("La contraseña actual no es correcta.");
+        }
+
+        // Sin esto, "cambiar" la contraseña por la misma devolveria exito y el
+        // visitante creeria que dejo de usar su documento como clave.
+        if (passwordEncoder.matches(dto.getPasswordNueva(), visitante.getPassword())) {
+            throw new ValidationException("La contraseña nueva tiene que ser distinta de la actual.");
+        }
+
+        visitante.setPassword(passwordEncoder.encode(dto.getPasswordNueva()));
+        visitanteRepository.save(visitante);
     }
 
     private Visitante buscarPorId(UUID id) {

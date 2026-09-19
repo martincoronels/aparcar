@@ -33,7 +33,7 @@ export default function PanelOperativo() {
       <ReservasContent
         modo="admin"
         refreshKey={reservasKey}
-        onReservaCreada={() => setOcupacionKey((k) => k + 1)}
+        onOcupacionCambiada={() => setOcupacionKey((k) => k + 1)}
       />
     </>
   );

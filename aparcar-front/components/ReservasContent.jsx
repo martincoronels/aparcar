@@ -44,9 +44,11 @@ function EstadoBadge({ estado }) {
 // mande un USER y usa su cuenta, y filtra el listado por dueño. Lo de acá es
 // para que la pantalla no ofrezca lo que el backend después va a rechazar.
 //
-// `onReservaCreada` es opcional: el dashboard-admin lo usa para refrescar la
-// cuadrícula de ocupación, que vive en un componente hermano.
-export default function ReservasContent({ modo = "user", onReservaCreada, refreshKey = 0 }) {
+// `onOcupacionCambiada` es opcional: el dashboard-admin lo usa para refrescar
+// la cuadrícula de ocupación, que vive en un componente hermano. Se dispara
+// tanto al crear una reserva como al cancelarla, porque las dos cosas cambian
+// qué cocheras están libres.
+export default function ReservasContent({ modo = "user", onOcupacionCambiada, refreshKey = 0 }) {
   const esAdmin = modo === "admin";
 
   const [visitantes, setVisitantes] = useState([]);
@@ -158,9 +160,27 @@ export default function ReservasContent({ modo = "user", onReservaCreada, refres
       reset({ patente: "", cocheraId: "", fecha: today() });
       setCocheras([]);
       cargarReservas();
-      onReservaCreada?.();
+      onOcupacionCambiada?.();
     } catch (err) {
       toast.error(err.response?.data?.message || "No se pudo crear la reserva.");
+    }
+  };
+
+  const cancelarReserva = async (reserva) => {
+    const confirmado = window.confirm(
+      `¿Seguro que querés cancelar la reserva de la cochera ${reserva.cochera?.numero} del ${reserva.fecha}?`
+    );
+    if (!confirmado) {
+      return;
+    }
+
+    try {
+      await api.post(`/api/v1/reservas/${reserva.id}/cancelar`);
+      toast.success("Reserva cancelada correctamente");
+      cargarReservas();
+      onOcupacionCambiada?.();
+    } catch (err) {
+      toast.error(err.response?.data?.message || "No se pudo cancelar la reserva.");
     }
   };
 
@@ -310,7 +330,18 @@ export default function ReservasContent({ modo = "user", onReservaCreada, refres
                       Cochera {r.cochera?.numero} ({r.cochera?.sector}) · {r.fecha}
                     </p>
                   </div>
-                  <EstadoBadge estado={r.estado} />
+                  <div className="flex items-center gap-3">
+                    <EstadoBadge estado={r.estado} />
+                    {r.estado === "CONFIRMADA" && (
+                      <button
+                        type="button"
+                        onClick={() => cancelarReserva(r)}
+                        className="rounded-lg border border-red-200 px-2.5 py-1 text-xs font-semibold text-red-600 hover:bg-red-50 transition-colors"
+                      >
+                        Cancelar
+                      </button>
+                    )}
+                  </div>
                 </li>
               ))}
             </ul>

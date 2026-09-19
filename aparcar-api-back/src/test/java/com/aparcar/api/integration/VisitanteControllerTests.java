@@ -15,6 +15,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.test.context.support.WithAnonymousUser;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
@@ -23,6 +24,7 @@ import java.util.Set;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.security.core.context.SecurityContextHolder.getContext;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.securityContext;
@@ -57,6 +59,9 @@ public class VisitanteControllerTests {
     private CocheraRepository cocheraRepository;
 
     @Autowired
+    private PasswordEncoder passwordEncoder;
+
+    @Autowired
     private MockMvc mockMvc;
 
     @AfterEach
@@ -68,11 +73,16 @@ public class VisitanteControllerTests {
     }
 
     private Visitante crearVisitante(String nombre, String documento, String email) {
+        return crearVisitante(nombre, documento, email, null);
+    }
+
+    private Visitante crearVisitante(String nombre, String documento, String email, String passwordEnClaro) {
         Visitante visitante = new Visitante();
         visitante.setNombre(nombre);
         visitante.setDocumento(documento);
         visitante.setEmail(email);
-        visitante.setPassword("hash-irrelevante");
+        visitante.setPassword(
+                passwordEnClaro == null ? "hash-irrelevante" : passwordEncoder.encode(passwordEnClaro));
         visitante.setAuthorities(Set.of(AppAuthority.USER));
         visitante.setIsActive(true);
         return visitanteRepository.save(visitante);
@@ -323,6 +333,67 @@ public class VisitanteControllerTests {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"email\":\"ocupado@test.com\"}"))
                 .andExpect(status().isBadRequest());
+    }
+
+    // ---- /me/password: cambiar la contraseña propia ----
+
+    @Test
+    @WithMockUser(username = VISITANTE, authorities = "USER")
+    @DisplayName("[Caja negra] PUT /api/v1/visitantes/me/password cambia la contraseña y deja entrar con la nueva")
+    void cambiarPasswordPropiaFuncionaDePuntaAPunta() throws Exception {
+        crearVisitante("Visitante Propio", "40222333", VISITANTE, "claveVieja1");
+        var context = getContext();
+
+        mockMvc.perform(put("/api/v1/visitantes/me/password")
+                        .with(securityContext(context))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"passwordActual\":\"claveVieja1\",\"passwordNueva\":\"claveNueva1\"}"))
+                .andExpect(status().isNoContent());
+
+        Visitante actualizado = visitanteRepository.findByEmail(VISITANTE).orElseThrow();
+        assertTrue(passwordEncoder.matches("claveNueva1", actualizado.getPassword()));
+        assertFalse(passwordEncoder.matches("claveVieja1", actualizado.getPassword()));
+    }
+
+    @Test
+    @WithMockUser(username = VISITANTE, authorities = "USER")
+    @DisplayName("[Caja negra] PUT /api/v1/visitantes/me/password devuelve 400 si la contraseña actual no coincide")
+    void cambiarPasswordDevuelve400SiLaActualNoCoincide() throws Exception {
+        crearVisitante("Visitante Propio", "40222333", VISITANTE, "claveVieja1");
+        var context = getContext();
+
+        mockMvc.perform(put("/api/v1/visitantes/me/password")
+                        .with(securityContext(context))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"passwordActual\":\"equivocada\",\"passwordNueva\":\"claveNueva1\"}"))
+                .andExpect(status().isBadRequest());
+
+        Visitante sinCambios = visitanteRepository.findByEmail(VISITANTE).orElseThrow();
+        assertTrue(passwordEncoder.matches("claveVieja1", sinCambios.getPassword()));
+    }
+
+    @Test
+    @WithMockUser(username = VISITANTE, authorities = "USER")
+    @DisplayName("[Caja negra] PUT /api/v1/visitantes/me/password devuelve 400 si la contraseña nueva es muy corta")
+    void cambiarPasswordDevuelve400SiLaNuevaEsMuyCorta() throws Exception {
+        crearVisitante("Visitante Propio", "40222333", VISITANTE, "claveVieja1");
+        var context = getContext();
+
+        mockMvc.perform(put("/api/v1/visitantes/me/password")
+                        .with(securityContext(context))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"passwordActual\":\"claveVieja1\",\"passwordNueva\":\"corta\"}"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @WithAnonymousUser
+    @DisplayName("[Caja negra] PUT /api/v1/visitantes/me/password devuelve 401 para anonimos")
+    void cambiarPasswordDevuelve401ParaAnonimos() throws Exception {
+        mockMvc.perform(put("/api/v1/visitantes/me/password")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isUnauthorized());
     }
 
     @Test

@@ -1,5 +1,6 @@
 package com.aparcar.api.service;
 
+import com.aparcar.api.dto.auth.ChangePasswordDto;
 import com.aparcar.api.dto.reserva.VisitanteAltaDto;
 import com.aparcar.api.dto.reserva.VisitanteAltaResponseDto;
 import com.aparcar.api.dto.reserva.VisitanteResponseDto;
@@ -47,4 +48,17 @@ public interface IVisitanteService {
      * @throws ValidationException Si el email nuevo ya lo usa otra cuenta.
      */
     VisitanteResponseDto actualizarPropio(String email, VisitanteUpdateDto dto);
+
+    /**
+     * Cambia la contraseña de la cuenta autenticada, validando primero la
+     * actual.
+     *
+     * <p>Sirve sobre todo para que un visitante dado de alta por un admin deje
+     * de usar su documento como contraseña.
+     *
+     * @throws NotFoundException   Si no existe una cuenta con ese email.
+     * @throws ValidationException Si la contraseña actual no coincide, o si la
+     *                             nueva es igual a la que ya tenia.
+     */
+    void cambiarPasswordPropia(String email, ChangePasswordDto dto);
 }

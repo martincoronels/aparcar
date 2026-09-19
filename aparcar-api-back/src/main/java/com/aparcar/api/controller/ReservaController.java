@@ -47,6 +47,17 @@ public class ReservaController {
                 reservaService.listar(authentication.getName(), esAdmin(authentication)));
     }
 
+    /**
+     * Da de baja la reserva. Es POST y no DELETE porque no borra nada: la pasa
+     * a CANCELADA y libera la cochera, dejando el registro para el historial.
+     */
+    @PostMapping("/{id}/cancelar")
+    public ResponseEntity<ReservaResponseDto> cancelar(
+            @PathVariable UUID id, Authentication authentication) {
+        return ResponseEntity.ok(
+                reservaService.cancelar(id, authentication.getName(), esAdmin(authentication)));
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<ReservaResponseDto> obtenerPorId(
             @PathVariable UUID id, Authentication authentication) {
