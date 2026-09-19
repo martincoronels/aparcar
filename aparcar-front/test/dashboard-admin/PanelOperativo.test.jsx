@@ -21,18 +21,26 @@ const VISITANTE = { id: "v1", nombre: "Juan Perez", documento: "30111222" };
 const VEHICULO = { id: "veh1", patente: "ABC123", tipo: "AUTO", visitanteId: "v1" };
 
 /**
- * `disponiblesPorLlamada` permite simular que, después de reservar, la cochera
+ * `ocupacionPorLlamada` permite simular que, después de reservar, la cochera
  * deja de estar disponible: la primera carga la devuelve libre y la segunda no.
+ *
+ * Se distingue por los parámetros y no por el orden de las llamadas: la
+ * cuadrícula pide la disponibilidad de todo el día (solo `fecha`), mientras que
+ * los formularios la piden filtrada por tipo de vehículo. Contar llamadas se
+ * volvió frágil cuando el alta de visitante pasó a pedir cocheras también.
  */
-function mockApi({ disponiblesPorLlamada = [[COCHERA]] } = {}) {
-  let llamadasDisponibles = 0;
+function mockApi({ ocupacionPorLlamada = [[COCHERA]] } = {}) {
+  let llamadasOcupacion = 0;
 
-  getMock.mockImplementation((url) => {
+  getMock.mockImplementation((url, config) => {
     if (url === "/api/v1/cocheras") return Promise.resolve({ data: [COCHERA] });
     if (url === "/api/v1/cocheras/disponibles") {
-      const i = Math.min(llamadasDisponibles, disponiblesPorLlamada.length - 1);
-      llamadasDisponibles += 1;
-      return Promise.resolve({ data: disponiblesPorLlamada[i] });
+      if (config?.params?.tipoVehiculo) {
+        return Promise.resolve({ data: [COCHERA] });
+      }
+      const i = Math.min(llamadasOcupacion, ocupacionPorLlamada.length - 1);
+      llamadasOcupacion += 1;
+      return Promise.resolve({ data: ocupacionPorLlamada[i] });
     }
     if (url === "/api/v1/visitantes") return Promise.resolve({ data: [VISITANTE] });
     if (url === "/api/v1/vehiculos") return Promise.resolve({ data: [VEHICULO] });
@@ -91,8 +99,8 @@ describe("PanelOperativo (dashboard ADMIN)", () => {
   // montarse. Desde el fix, crear una reserva la obliga a volver a pedir datos.
   it("al crear la reserva refresca la cuadricula de ocupacion", async () => {
     const user = userEvent.setup();
-    // 1ra carga de la grilla: libre. 2da (la del form): libre. 3ra: ya ocupada.
-    mockApi({ disponiblesPorLlamada: [[COCHERA], [COCHERA], []] });
+    // 1ra carga de la grilla: libre. De ahí en más: ya ocupada.
+    mockApi({ ocupacionPorLlamada: [[COCHERA], []] });
     postMock.mockResolvedValue({ data: { id: "r1" } });
 
     render(<PanelOperativo />);
@@ -105,6 +113,29 @@ describe("PanelOperativo (dashboard ADMIN)", () => {
     await user.selectOptions(selectCochera, "c1");
     await user.click(screen.getByRole("button", { name: /confirmar reserva/i }));
 
+    expect(await screen.findByText("1/1 ocupadas")).toBeInTheDocument();
+  });
+
+  // El alta de visitante ahora también reserva, así que tiene que mover la
+  // cuadrícula igual que el formulario de reservas.
+  it("dar de alta un visitante tambien refresca la cuadricula de ocupacion", async () => {
+    const user = userEvent.setup();
+    mockApi({ ocupacionPorLlamada: [[COCHERA], []] });
+    postMock.mockResolvedValue({ data: {} });
+
+    render(<PanelOperativo />);
+    expect(await screen.findByText("0/1 ocupadas")).toBeInTheDocument();
+
+    await user.type(screen.getByPlaceholderText("Nombre completo"), "Ana Lopez");
+    await user.type(screen.getByPlaceholderText("DNI / documento"), "30111222");
+    await user.type(screen.getByPlaceholderText("Con esto inicia sesión"), "ana@test.com");
+    // Por id: el panel tiene dos campos de patente (el del alta y el de la
+    // reserva para un visitante ya registrado) y comparten placeholder.
+    await user.type(document.getElementById("patente"), "XYZ789");
+    await user.selectOptions(screen.getByLabelText("Cochera (hoy)"), "c1");
+    await user.click(screen.getByRole("button", { name: /dar de alta y reservar/i }));
+
+    await waitFor(() => expect(postMock).toHaveBeenCalledWith("/api/v1/visitantes/alta", expect.any(Object)));
     expect(await screen.findByText("1/1 ocupadas")).toBeInTheDocument();
   });
 });

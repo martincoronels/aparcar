@@ -1,6 +1,7 @@
 package com.aparcar.api.integration;
 
 import com.aparcar.api.config.IntegrationTests;
+import com.aparcar.api.entity.auth.AppAuthority;
 import com.aparcar.api.entity.reserva.Cochera;
 import com.aparcar.api.entity.reserva.CocheraEstado;
 import com.aparcar.api.entity.reserva.CocheraTipo;
@@ -8,7 +9,7 @@ import com.aparcar.api.entity.reserva.Reserva;
 import com.aparcar.api.entity.reserva.ReservaEstado;
 import com.aparcar.api.entity.reserva.Vehiculo;
 import com.aparcar.api.entity.reserva.VehiculoTipo;
-import com.aparcar.api.entity.reserva.Visitante;
+import com.aparcar.api.entity.auth.Visitante;
 import com.aparcar.api.repository.CocheraRepository;
 import com.aparcar.api.repository.ReservaRepository;
 import com.aparcar.api.repository.VehiculoRepository;
@@ -23,6 +24,7 @@ import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.LocalDate;
+import java.util.Set;
 import java.util.UUID;
 
 import static org.springframework.security.core.context.SecurityContextHolder.getContext;
@@ -286,6 +288,10 @@ public class CocheraControllerTests {
         Visitante visitante = new Visitante();
         visitante.setNombre("Juan Perez");
         visitante.setDocumento("30111222");
+        visitante.setEmail("juan@test.com");
+        visitante.setPassword("hash-irrelevante");
+        visitante.setAuthorities(Set.of(AppAuthority.USER));
+        visitante.setIsActive(true);
         visitanteRepository.save(visitante);
 
         Vehiculo vehiculo = new Vehiculo();

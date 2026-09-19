@@ -3,10 +3,10 @@ package com.aparcar.api.service;
 import com.aparcar.api.config.UnitTests;
 import com.aparcar.api.dto.reserva.VehiculoRequestDto;
 import com.aparcar.api.dto.reserva.VehiculoUpdateDto;
-import com.aparcar.api.entity.auth.AppUser;
+import com.aparcar.api.entity.auth.Visitante;
 import com.aparcar.api.entity.reserva.Vehiculo;
 import com.aparcar.api.entity.reserva.VehiculoTipo;
-import com.aparcar.api.entity.reserva.Visitante;
+import com.aparcar.api.entity.auth.Visitante;
 import com.aparcar.api.exception.NotFoundException;
 import com.aparcar.api.exception.ValidationException;
 import com.aparcar.api.repository.ReservaRepository;
@@ -125,13 +125,13 @@ public class VehiculoServiceTests {
     @Test
     @DisplayName("editar lanza AccessDeniedException si quien pide no es ADMIN ni el dueño")
     void editarLanzaAccessDeniedExceptionSiNoEsElDueño() {
-        Visitante visitante = new Visitante();
-        AppUser dueño = new AppUser();
+        // El dueño del vehiculo ya no es un visitante con una cuenta colgada:
+        // es la cuenta.
+        Visitante dueño = new Visitante();
         dueño.setEmail("dueño@test.com");
-        visitante.setAppUser(dueño);
         Vehiculo vehiculo = new Vehiculo();
         vehiculo.setPatente("ABC123");
-        vehiculo.setVisitante(visitante);
+        vehiculo.setVisitante(dueño);
 
         VehiculoUpdateDto dto = new VehiculoUpdateDto();
         dto.setPatente("ABC123");
@@ -146,14 +146,12 @@ public class VehiculoServiceTests {
     @Test
     @DisplayName("editar permite al ADMIN modificar un vehiculo que no es suyo")
     void editarPermiteAlAdminModificarCualquierVehiculo() {
-        Visitante visitante = new Visitante();
-        AppUser dueño = new AppUser();
+        Visitante dueño = new Visitante();
         dueño.setEmail("dueño@test.com");
-        visitante.setAppUser(dueño);
         Vehiculo vehiculo = new Vehiculo();
         vehiculo.setPatente("ABC123");
         vehiculo.setTipo(VehiculoTipo.AUTO);
-        vehiculo.setVisitante(visitante);
+        vehiculo.setVisitante(dueño);
 
         VehiculoUpdateDto dto = new VehiculoUpdateDto();
         dto.setPatente("XYZ999");
@@ -171,12 +169,10 @@ public class VehiculoServiceTests {
     @Test
     @DisplayName("eliminar lanza ValidationException si el vehiculo tiene reservas asociadas")
     void eliminarLanzaValidationExceptionSiTieneReservas() {
-        Visitante visitante = new Visitante();
-        AppUser dueño = new AppUser();
+        Visitante dueño = new Visitante();
         dueño.setEmail("dueño@test.com");
-        visitante.setAppUser(dueño);
         Vehiculo vehiculo = new Vehiculo();
-        vehiculo.setVisitante(visitante);
+        vehiculo.setVisitante(dueño);
         UUID id = UUID.randomUUID();
 
         when(vehiculoRepository.findById(id)).thenReturn(Optional.of(vehiculo));

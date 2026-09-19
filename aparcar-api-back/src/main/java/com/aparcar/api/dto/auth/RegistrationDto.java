@@ -7,6 +7,10 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+/**
+ * Alta administrativa desde "Gestion de usuarios": a diferencia del alta
+ * operativa, el admin elige la contraseña en vez de derivarla del documento.
+ */
 @Data
 @AllArgsConstructor
 @NoArgsConstructor
@@ -14,6 +18,9 @@ public class RegistrationDto {
     @NotEmpty(message = "Name is required")
     @Size(max = 100, message = "Name can't be longer than 100 characters")
     private String nombre;
+
+    @NotEmpty(message = "El documento es obligatorio")
+    private String documento;
 
     @Email
     @NotEmpty(message = "Email is required")

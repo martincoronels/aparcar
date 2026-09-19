@@ -1,7 +1,6 @@
 import { requireAuth } from "@/utils/serverAuth";
 import LogoutButton from "@/components/LogoutButton";
-import MiPerfilContent from "./MiPerfilContent";
-import ReservasContent from "@/components/ReservasContent";
+import PanelVisitante from "./PanelVisitante";
 
 export default async function DashboardUserPage() {
   // Validación de rol del lado del servidor: si no tenés el rol USER,
@@ -14,8 +13,7 @@ export default async function DashboardUserPage() {
         <div className="flex justify-end">
           <LogoutButton />
         </div>
-        <MiPerfilContent />
-        <ReservasContent />
+        <PanelVisitante />
       </div>
     </div>
   );

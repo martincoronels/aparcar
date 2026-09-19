@@ -33,14 +33,24 @@ function EstadoBadge({ estado }) {
   );
 }
 
-// Lo usan los dos dashboards: el USER para reservar con su propio vehículo, y
-// el ADMIN para reservar en nombre de cualquier visitante ya cargado. La lógica
-// es la misma en los dos casos porque la búsqueda es por patente sobre el
-// catálogo completo, sin filtrar por la cuenta que está mirando.
+// Lo usan los dos dashboards, pero no hacen lo mismo:
 //
-// `onReservaCreada` es opcional: el dashboard-admin lo usa para refrescar la
-// cuadrícula de ocupación, que vive en un componente hermano.
-export default function ReservasContent({ onReservaCreada }) {
+// - modo "admin": busca la patente en el catálogo completo y reserva a nombre
+//   de cualquier visitante ya registrado. Ve todas las reservas del sistema.
+// - modo "user": elige entre sus propias patentes y reserva a su nombre. Ve
+//   solo sus reservas.
+//
+// La separación es real, no cosmética: el backend ignora el visitanteId que
+// mande un USER y usa su cuenta, y filtra el listado por dueño. Lo de acá es
+// para que la pantalla no ofrezca lo que el backend después va a rechazar.
+//
+// `onOcupacionCambiada` es opcional: el dashboard-admin lo usa para refrescar
+// la cuadrícula de ocupación, que vive en un componente hermano. Se dispara
+// tanto al crear una reserva como al cancelarla, porque las dos cosas cambian
+// qué cocheras están libres.
+export default function ReservasContent({ modo = "user", onOcupacionCambiada, refreshKey = 0 }) {
+  const esAdmin = modo === "admin";
+
   const [visitantes, setVisitantes] = useState([]);
   const [vehiculos, setVehiculos] = useState([]);
   const [cocheras, setCocheras] = useState([]);
@@ -63,22 +73,24 @@ export default function ReservasContent({ onReservaCreada }) {
   const cocheraId = watch("cocheraId");
   const fecha = watch("fecha");
 
-  // El vehículo se busca por patente en lo que ya cargaron el admin o el
-  // propio visitante — no hace falta elegir visitante y vehículo por separado.
   const vehiculoEncontrado = useMemo(() => {
     const normalizada = patente?.trim().toUpperCase();
     if (!normalizada) return null;
     return vehiculos.find((v) => v.patente === normalizada) || null;
   }, [patente, vehiculos]);
 
+  // Solo el admin necesita saber de quién es el vehículo: el visitante reserva
+  // para sí mismo y el backend resuelve a nombre de quién va.
   const visitanteEncontrado = useMemo(() => {
-    if (!vehiculoEncontrado) return null;
+    if (!esAdmin || !vehiculoEncontrado) return null;
     return visitantes.find((v) => v.id === vehiculoEncontrado.visitanteId) || null;
-  }, [vehiculoEncontrado, visitantes]);
+  }, [esAdmin, vehiculoEncontrado, visitantes]);
 
   const cargarReservas = async () => {
     setLoadingReservas(true);
     try {
+      // El backend ya devuelve todas las reservas si sos ADMIN, y solo las
+      // propias si sos visitante. Acá no hay nada que filtrar.
       const res = await api.get("/api/v1/reservas");
       setReservas(res.data);
     } catch {
@@ -88,25 +100,29 @@ export default function ReservasContent({ onReservaCreada }) {
     }
   };
 
-  // Se re-llama al enfocar el campo de patente (además de al montar), porque
-  // el vehículo puede haberse cargado recién arriba en esta misma página
-  // ("Mis datos" en el dashboard USER, "Nuevo visitante" en el ADMIN) y esta
-  // lista ya se había pedido antes de que existiera.
+  // GET /api/v1/vehiculos devuelve el catálogo completo para el ADMIN y solo
+  // los propios para un visitante, así que la misma llamada sirve en los dos
+  // modos. Se re-llama al enfocar el campo de patente (además de al montar)
+  // porque el vehículo puede haberse cargado recién arriba en esta página.
   const cargarCatalogos = () => {
-    api
-      .get("/api/v1/visitantes")
-      .then((res) => setVisitantes(res.data))
-      .catch(() => toast.error("No se pudieron cargar los visitantes."));
     api
       .get("/api/v1/vehiculos")
       .then((res) => setVehiculos(res.data))
       .catch(() => toast.error("No se pudieron cargar los vehículos."));
+
+    if (!esAdmin) return;
+
+    api
+      .get("/api/v1/visitantes")
+      .then((res) => setVisitantes(res.data))
+      .catch(() => toast.error("No se pudieron cargar los visitantes."));
   };
 
   useEffect(() => {
     cargarCatalogos();
     cargarReservas();
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [refreshKey]);
 
   useEffect(() => {
     setValue("cocheraId", "");
@@ -121,14 +137,21 @@ export default function ReservasContent({ onReservaCreada }) {
   }, [fecha, vehiculoEncontrado]);
 
   const onSubmit = async (data) => {
-    if (!vehiculoEncontrado || !visitanteEncontrado) {
+    if (!vehiculoEncontrado) {
       toast.error("No se encontró ningún vehículo con esa patente.");
+      return;
+    }
+
+    if (esAdmin && !visitanteEncontrado) {
+      toast.error("No se encontró el visitante dueño de ese vehículo.");
       return;
     }
 
     try {
       await api.post("/api/v1/reservas", {
-        visitanteId: visitanteEncontrado.id,
+        // Solo el admin puede reservar en nombre de otro; para un visitante el
+        // backend ignora este campo y usa su propia cuenta.
+        visitanteId: esAdmin ? visitanteEncontrado.id : undefined,
         vehiculoId: vehiculoEncontrado.id,
         cocheraId: data.cocheraId,
         fecha: data.fecha,
@@ -137,47 +160,92 @@ export default function ReservasContent({ onReservaCreada }) {
       reset({ patente: "", cocheraId: "", fecha: today() });
       setCocheras([]);
       cargarReservas();
-      onReservaCreada?.();
+      onOcupacionCambiada?.();
     } catch (err) {
       toast.error(err.response?.data?.message || "No se pudo crear la reserva.");
     }
   };
+
+  const cancelarReserva = async (reserva) => {
+    const confirmado = window.confirm(
+      `¿Seguro que querés cancelar la reserva de la cochera ${reserva.cochera?.numero} del ${reserva.fecha}?`
+    );
+    if (!confirmado) {
+      return;
+    }
+
+    try {
+      await api.post(`/api/v1/reservas/${reserva.id}/cancelar`);
+      toast.success("Reserva cancelada correctamente");
+      cargarReservas();
+      onOcupacionCambiada?.();
+    } catch (err) {
+      toast.error(err.response?.data?.message || "No se pudo cancelar la reserva.");
+    }
+  };
+
+  const sinVehiculos = !esAdmin && vehiculos.length === 0;
 
   return (
     <div className="mx-auto max-w-3xl space-y-10">
       <div>
         <h1 className="text-3xl font-extrabold tracking-tight text-[#002147] mb-2">Nueva reserva</h1>
         <p className="text-sm text-[#002147]/60">
-          Ingresá la patente del vehículo y elegí una cochera disponible para la fecha.
+          {esAdmin
+            ? "Ingresá la patente del vehículo y elegí una cochera disponible para la fecha."
+            : "Elegí uno de tus vehículos y una cochera disponible para la fecha."}
         </p>
       </div>
 
       <div className="rounded-2xl bg-white p-8 shadow-xl shadow-[#002147]/10 ring-1 ring-[#002147]/15">
+        {sinVehiculos ? (
+          <p className="text-sm text-[#002147]/60">
+            Cargá al menos un vehículo en &quot;Mis datos&quot; para poder reservar.
+          </p>
+        ) : (
         <form className="space-y-6" onSubmit={handleSubmit(onSubmit)}>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className={labelClasses} htmlFor="reserva-patente">Patente</label>
-              <input
-                id="reserva-patente"
-                list="patentes-registradas"
-                {...register("patente")}
-                onFocus={cargarCatalogos}
-                className={`${inputClasses} uppercase`}
-                placeholder="ABC123 / AB123CD"
-              />
-              <datalist id="patentes-registradas">
-                {vehiculos.map((v) => (
-                  <option key={v.id} value={v.patente} />
-                ))}
-              </datalist>
+              {esAdmin ? (
+                <>
+                  <input
+                    id="reserva-patente"
+                    list="patentes-registradas"
+                    {...register("patente")}
+                    onFocus={cargarCatalogos}
+                    className={`${inputClasses} uppercase`}
+                    placeholder="ABC123 / AB123CD"
+                  />
+                  <datalist id="patentes-registradas">
+                    {vehiculos.map((v) => (
+                      <option key={v.id} value={v.patente} />
+                    ))}
+                  </datalist>
+                </>
+              ) : (
+                <select
+                  id="reserva-patente"
+                  {...register("patente")}
+                  onFocus={cargarCatalogos}
+                  className={inputClasses}
+                >
+                  <option value="">Seleccioná un vehículo</option>
+                  {vehiculos.map((v) => (
+                    <option key={v.id} value={v.patente}>
+                      {v.patente} — {v.tipo}
+                    </option>
+                  ))}
+                </select>
+              )}
               {errors.patente && <p className="mt-1 text-sm text-red-500">{errors.patente.message}</p>}
 
-              {patente && !vehiculoEncontrado && (
+              {esAdmin && patente && !vehiculoEncontrado && (
                 <p className="mt-1 text-sm text-[#002147]/50">
                   No hay ningún vehículo registrado con esa patente.
                 </p>
               )}
-              {vehiculoEncontrado && visitanteEncontrado && (
+              {esAdmin && vehiculoEncontrado && visitanteEncontrado && (
                 <p className="mt-1 text-sm text-[#0cb7f2]">
                   {visitanteEncontrado.nombre} — {vehiculoEncontrado.tipo}
                 </p>
@@ -205,7 +273,11 @@ export default function ReservasContent({ onReservaCreada }) {
                 disabled={!vehiculoEncontrado || !fecha}
               >
                 <option value="">
-                  {vehiculoEncontrado && fecha ? "Seleccioná una cochera" : "Ingresá primero una patente válida y una fecha"}
+                  {vehiculoEncontrado && fecha
+                    ? "Seleccioná una cochera"
+                    : esAdmin
+                    ? "Ingresá primero una patente válida y una fecha"
+                    : "Elegí primero un vehículo y una fecha"}
                 </option>
                 {cocheras.map((c) => (
                   <option key={c.id} value={c.id}>
@@ -230,30 +302,46 @@ export default function ReservasContent({ onReservaCreada }) {
             </button>
           </div>
         </form>
+        )}
       </div>
 
       <div>
-        <h2 className="text-xl font-bold text-[#002147] mb-4">Reservas existentes</h2>
+        <h2 className="text-xl font-bold text-[#002147] mb-4">
+          {esAdmin ? "Todas las reservas" : "Mis reservas"}
+        </h2>
         <div className="rounded-2xl bg-white shadow-xl shadow-[#002147]/10 ring-1 ring-[#002147]/15 overflow-hidden">
           {loadingReservas ? (
             <div className="flex items-center justify-center p-8">
               <div className="h-6 w-6 animate-spin rounded-full border-4 border-[#0cb7f2] border-t-transparent" />
             </div>
           ) : reservas.length === 0 ? (
-            <p className="p-6 text-sm text-[#002147]/60">Todavía no hay reservas cargadas.</p>
+            <p className="p-6 text-sm text-[#002147]/60">
+              {esAdmin ? "Todavía no hay reservas cargadas." : "Todavía no tenés reservas."}
+            </p>
           ) : (
             <ul className="divide-y divide-[#002147]/10">
               {reservas.map((r) => (
                 <li key={r.id} className="flex flex-wrap items-center justify-between gap-2 p-4">
                   <div>
                     <p className="text-sm font-medium text-[#002147]">
-                      {r.visitante?.nombre} — {r.vehiculo?.patente}
+                      {esAdmin ? `${r.visitante?.nombre} — ${r.vehiculo?.patente}` : r.vehiculo?.patente}
                     </p>
                     <p className="text-xs text-[#002147]/60">
                       Cochera {r.cochera?.numero} ({r.cochera?.sector}) · {r.fecha}
                     </p>
                   </div>
-                  <EstadoBadge estado={r.estado} />
+                  <div className="flex items-center gap-3">
+                    <EstadoBadge estado={r.estado} />
+                    {r.estado === "CONFIRMADA" && (
+                      <button
+                        type="button"
+                        onClick={() => cancelarReserva(r)}
+                        className="rounded-lg border border-red-200 px-2.5 py-1 text-xs font-semibold text-red-600 hover:bg-red-50 transition-colors"
+                      >
+                        Cancelar
+                      </button>
+                    )}
+                  </div>
                 </li>
               ))}
             </ul>

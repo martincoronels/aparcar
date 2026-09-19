@@ -12,6 +12,9 @@ public record UpdateUserDto(
         @Size(max = 100, message = "Name can't be longer than 100 characters")
         String nombre,
 
+        @NotBlank(message = "El documento es obligatorio")
+        String documento,
+
         String telefono,
 
         @NotEmpty(message = "At least one authority is required")

@@ -2,8 +2,8 @@ package com.aparcar.api.integration;
 
 import com.aparcar.api.component.IRevokedUserCache;
 import com.aparcar.api.config.IntegrationTests;
-import com.aparcar.api.entity.auth.AppUser;
-import com.aparcar.api.repository.AppUserRepository;
+import com.aparcar.api.entity.auth.Visitante;
+import com.aparcar.api.repository.VisitanteRepository;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -28,7 +28,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 public class UserControllerTests {
 
     @Autowired
-    private AppUserRepository appUserRepository;
+    private VisitanteRepository visitanteRepository;
 
     @Autowired
     private IRevokedUserCache revokedUserCache;
@@ -39,7 +39,7 @@ public class UserControllerTests {
     @AfterEach
     void tearDown() {
         // Clear the repository and cache after each test
-        appUserRepository.deleteAll();
+        visitanteRepository.deleteAll();
         revokedUserCache.clear();
     }
 
@@ -97,12 +97,13 @@ public class UserControllerTests {
     @WithMockUser(authorities = "ADMIN")
     @DisplayName("/users/activate returns 200 OK for valid email")
     void activateShouldReturnOkForValidEmail() throws Exception {
-        AppUser user = new AppUser();
+        Visitante user = new Visitante();
                 user.setNombre("Test User");
+                user.setDocumento("30111222");
                 user.setEmail("some@email.com");
         user.setPassword("password");
         user.setIsActive(false);
-        appUserRepository.save(user);
+        visitanteRepository.save(user);
 
         var context = getContext();
         mockMvc.perform(post("/users/activate")
@@ -112,7 +113,7 @@ public class UserControllerTests {
                 .andExpect(status().isOk());
 
         // Verify that the user is now active
-        AppUser activatedUser = appUserRepository.findByEmail("some@email.com")
+        Visitante activatedUser = visitanteRepository.findByEmail("some@email.com")
                 .orElseThrow(() -> new IllegalStateException("User not found after activation."));
 
         assertTrue(activatedUser.getIsActive());
@@ -122,18 +123,20 @@ public class UserControllerTests {
     @WithMockUser(authorities = "ADMIN")
     @DisplayName("/users/inactive returns 200 OK with a set of inactive users")
     void inactiveShouldReturnOkWithASetOfInactiveUsers() throws Exception {
-        AppUser user1 = new AppUser();
+        Visitante user1 = new Visitante();
                 user1.setNombre("Test User");
+                user1.setDocumento("30111222");
                 user1.setEmail("some@email.com");
         user1.setPassword("password");
         user1.setIsActive(false);
-        AppUser user2 = new AppUser();
+        Visitante user2 = new Visitante();
                 user2.setNombre("Test User");
+                user2.setDocumento("30111333");
                 user2.setEmail("another@email.com");
         user2.setPassword("password");
         user2.setIsActive(true);
-        appUserRepository.save(user1);
-        appUserRepository.save(user2);
+        visitanteRepository.save(user1);
+        visitanteRepository.save(user2);
 
         var context = getContext();
         mockMvc.perform(get("/users/inactive")
@@ -148,12 +151,13 @@ public class UserControllerTests {
     @WithMockUser(authorities = "ADMIN", username = "some@email.com")
     @DisplayName("DELETE /users returns 400 Bad Request for caller email equal to deleted email")
     void deleteShouldReturnBadRequestForInvalidEmail() throws Exception {
-        AppUser user = new AppUser();
+        Visitante user = new Visitante();
                 user.setNombre("Test User");
+                user.setDocumento("30111222");
                 user.setEmail("some@email.com");
         user.setPassword("password");
         user.setIsActive(false);
-        appUserRepository.save(user);
+        visitanteRepository.save(user);
 
         var context = getContext();
         mockMvc.perform(delete("/users")
@@ -167,12 +171,13 @@ public class UserControllerTests {
     @WithMockUser(authorities = "ADMIN", username = "caller@email.com")
     @DisplayName("DELETE /users returns 200 OK for valid email")
     void deleteShouldReturnOkForValidEmail() throws Exception {
-        AppUser user = new AppUser();
+        Visitante user = new Visitante();
                 user.setNombre("Test User");
+                user.setDocumento("30111222");
                 user.setEmail("some@email.com");
         user.setPassword("password");
         user.setIsActive(false);
-        appUserRepository.save(user);
+        visitanteRepository.save(user);
 
         var context = getContext();
         mockMvc.perform(delete("/users")
@@ -181,7 +186,7 @@ public class UserControllerTests {
                         .content("{\"email\": \"some@email.com\"}"))
                 .andExpect(status().isNoContent());
 
-        assertFalse(appUserRepository.existsByEmail(user.getEmail()));
+        assertFalse(visitanteRepository.existsByEmail(user.getEmail()));
         assertTrue(revokedUserCache.isRevoked(user.getEmail()));
     }
 
@@ -189,26 +194,27 @@ public class UserControllerTests {
     @WithMockUser(authorities = "ADMIN")
     @DisplayName("PUT /api/v1/usuarios/{id} actualiza nombre, telefono y authorities")
     void updateUserUpdatesEditableFields() throws Exception {
-        AppUser user = new AppUser();
+        Visitante user = new Visitante();
         user.setNombre("Nombre Viejo");
+        user.setDocumento("30111222");
         user.setEmail("some@email.com");
         user.setPassword("password");
         user.setTelefono("111");
         user.setAuthorities(java.util.Set.of(com.aparcar.api.entity.auth.AppAuthority.USER));
         user.setIsActive(true);
-        appUserRepository.save(user);
+        visitanteRepository.save(user);
 
         var context = getContext();
         mockMvc.perform(put("/api/v1/usuarios/" + user.getId())
                         .with(securityContext(context))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"nombre\": \"Nombre Nuevo\", \"telefono\": \"222\", \"authorities\": [\"USER\", \"ADMIN\"]}"))
+                        .content("{\"nombre\": \"Nombre Nuevo\", \"documento\": \"30111222\", \"telefono\": \"222\", \"authorities\": [\"USER\", \"ADMIN\"]}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.nombre").value("Nombre Nuevo"))
                 .andExpect(jsonPath("$.telefono").value("222"))
                 .andExpect(jsonPath("$.authorities", containsInAnyOrder("USER", "ADMIN")));
 
-        AppUser updated = appUserRepository.findById(user.getId())
+        Visitante updated = visitanteRepository.findById(user.getId())
                 .orElseThrow(() -> new IllegalStateException("User not found"));
         assertEquals("Nombre Nuevo", updated.getNombre());
         assertEquals(2, updated.getAuthorities().size());
@@ -222,7 +228,7 @@ public class UserControllerTests {
         mockMvc.perform(put("/api/v1/usuarios/" + java.util.UUID.randomUUID())
                         .with(securityContext(context))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"nombre\": \"Nombre\", \"telefono\": \"111\", \"authorities\": [\"USER\"]}"))
+                        .content("{\"nombre\": \"Nombre\", \"documento\": \"30111222\", \"telefono\": \"111\", \"authorities\": [\"USER\"]}"))
                 .andExpect(status().isNotFound());
     }
 
@@ -232,7 +238,7 @@ public class UserControllerTests {
     void updateUserRejectsAnonymousUsers() throws Exception {
         mockMvc.perform(put("/api/v1/usuarios/" + java.util.UUID.randomUUID())
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"nombre\": \"Nombre\", \"telefono\": \"111\", \"authorities\": [\"USER\"]}"))
+                        .content("{\"nombre\": \"Nombre\", \"documento\": \"30111222\", \"telefono\": \"111\", \"authorities\": [\"USER\"]}"))
                 .andExpect(status().isUnauthorized());
     }
 }

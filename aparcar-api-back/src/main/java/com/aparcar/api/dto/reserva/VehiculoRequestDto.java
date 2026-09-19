@@ -21,6 +21,9 @@ public class VehiculoRequestDto {
     @NotNull(message = "El tipo de vehiculo es obligatorio")
     private VehiculoTipo tipo;
 
-    @NotNull(message = "El visitante es obligatorio")
+    /**
+     * De quien es el vehiculo. Solo lo puede mandar un ADMIN: si quien lo carga
+     * es un USER, el backend ignora este campo y usa su propia cuenta.
+     */
     private UUID visitanteId;
 }

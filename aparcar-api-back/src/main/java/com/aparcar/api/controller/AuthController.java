@@ -29,6 +29,7 @@ public class AuthController {
         RegisteredUserDto registeredUser = authService.register(registrationDto);
         registeredUser = new RegisteredUserDto(
                 HtmlUtils.htmlEscape(registeredUser.nombre()),
+                registeredUser.documento(),
                 HtmlUtils.htmlEscape(registeredUser.email()),
                 registeredUser.telefono(),
                 registeredUser.authorities()
