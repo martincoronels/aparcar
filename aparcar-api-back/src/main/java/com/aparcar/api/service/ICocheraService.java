@@ -19,6 +19,24 @@ public interface ICocheraService {
     CocheraResponseDto crear(CocheraRequestDto dto);
 
     /**
+     * Alta en lote: todo-o-nada. Si cualquier elemento falla (numero
+     * repetido dentro del lote, o ya existente en la base), no se crea
+     * ninguna cochera del lote.
+     *
+     * @throws ValidationException Si la lista esta vacia, si hay un numero
+     *                              repetido dentro del propio lote, o si
+     *                              algun numero ya existe en la base.
+     */
+    List<CocheraResponseDto> crearEnLote(List<CocheraRequestDto> dtos);
+
+    /**
+     * Valores distintos de "sector" ya usados en cocheras existentes,
+     * ordenados alfabeticamente. Pensado para que el frontend arme un
+     * dropdown con sectores reales en vez de texto libre.
+     */
+    List<String> listarSectores();
+
+    /**
      * Todos los parametros son opcionales (pasar null los ignora). El filtro
      * de sector es parcial e insensible a mayusculas/minusculas.
      *

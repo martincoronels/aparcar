@@ -36,6 +36,16 @@ public class CocheraController {
         return ResponseEntity.status(HttpStatus.CREATED).body(cocheraService.crear(dto));
     }
 
+    @PostMapping("/bulk")
+    public ResponseEntity<List<CocheraResponseDto>> crearEnLote(@Valid @RequestBody List<CocheraRequestDto> dtos) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(cocheraService.crearEnLote(dtos));
+    }
+
+    @GetMapping("/sectores")
+    public ResponseEntity<List<String>> listarSectores() {
+        return ResponseEntity.ok(cocheraService.listarSectores());
+    }
+
     @GetMapping
     public ResponseEntity<List<CocheraResponseDto>> listar(
             @RequestParam(required = false) String sector,

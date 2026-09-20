@@ -15,8 +15,10 @@ import com.aparcar.api.repository.ReservaRepository;
 import com.aparcar.api.service.ICocheraService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -41,6 +43,46 @@ public class CocheraService implements ICocheraService {
         cochera.setEstado(dto.getEstado());
 
         return toResponseDto(cocheraRepository.save(cochera));
+    }
+
+    @Override
+    @Transactional
+    public List<CocheraResponseDto> crearEnLote(List<CocheraRequestDto> dtos) {
+        if (dtos == null || dtos.isEmpty()) {
+            throw new ValidationException("La lista de cocheras no puede estar vacia.");
+        }
+
+        // Todo-o-nada: se valida el lote entero ANTES de guardar nada. Si algo
+        // falla mas abajo igual quedariamos cubiertos por @Transactional
+        // (rollback automatico), pero validar primero evita guardar la mitad
+        // del lote antes de descubrir que la ultima cochera esta repetida.
+        Set<String> numerosEnLote = new HashSet<>();
+        for (CocheraRequestDto dto : dtos) {
+            if (!numerosEnLote.add(dto.getNumero())) {
+                throw new ValidationException(
+                        "El numero '%s' esta repetido dentro del lote.".formatted(dto.getNumero()));
+            }
+            if (cocheraRepository.existsByNumero(dto.getNumero())) {
+                throw new ValidationException(
+                        "Ya existe una cochera con el numero '%s'.".formatted(dto.getNumero()));
+            }
+        }
+
+        List<Cochera> cocheras = dtos.stream().map(dto -> {
+            Cochera cochera = new Cochera();
+            cochera.setNumero(dto.getNumero());
+            cochera.setSector(dto.getSector());
+            cochera.setTipo(dto.getTipo());
+            cochera.setEstado(dto.getEstado());
+            return cochera;
+        }).toList();
+
+        return cocheraRepository.saveAll(cocheras).stream().map(this::toResponseDto).toList();
+    }
+
+    @Override
+    public List<String> listarSectores() {
+        return cocheraRepository.findDistinctSectores();
     }
 
     @Override

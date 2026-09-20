@@ -34,8 +34,12 @@ const cochera = (overrides = {}) => ({
 // El componente pide dos cosas distintas por GET /api/v1/cocheras: una sin
 // params (para el dropdown de sectores, siempre la lista completa) y otra con
 // params (la tabla, filtrada). Este helper simula ambas a la vez.
-function mockCocheras(todasLasCocheras, filtradas = todasLasCocheras) {
+function mockCocheras(todasLasCocheras, filtradas = todasLasCocheras, sectores) {
+  const sectoresCalculados =
+    sectores ?? Array.from(new Set(todasLasCocheras.map((c) => c.sector))).sort();
+
   getMock.mockImplementation((url, config) => {
+    if (url === "/api/v1/cocheras/sectores") return Promise.resolve({ data: sectoresCalculados });
     if (url !== "/api/v1/cocheras") return Promise.reject(new Error(`URL no mockeada: ${url}`));
     const sinParams = !config?.params || Object.keys(config.params).length === 0;
     return Promise.resolve({ data: sinParams ? todasLasCocheras : filtradas });
@@ -149,14 +153,16 @@ describe("CocherasManagement", () => {
     expect(await screen.findByText("Ocupada")).toBeInTheDocument();
   });
 
-  it("crea una cochera nueva y refresca la lista y los sectores", async () => {
+    it("crea una cochera nueva y refresca la lista y los sectores", async () => {
     postMock.mockResolvedValue({ data: cochera() });
     const user = userEvent.setup();
     render(<CocherasManagement />);
-    await waitFor(() => expect(getMock).toHaveBeenCalledTimes(1));
+    await waitFor(() =>
+      expect(getMock.mock.calls.some((c) => c[0] === "/api/v1/cocheras/sectores")).toBe(true)
+    );
 
-    await user.type(screen.getByPlaceholderText("A-01"), "A-01");
-    await user.type(screen.getByPlaceholderText("Planta Baja"), "Planta Baja");
+    await user.type(document.getElementById("numero"), "A-01");
+    await user.type(document.getElementById("sector"), "Planta Baja");
     await user.click(screen.getByRole("button", { name: /crear cochera/i }));
 
     await waitFor(() =>
@@ -166,8 +172,8 @@ describe("CocherasManagement", () => {
       )
     );
     expect(toastSuccessMock).toHaveBeenCalledWith("Cochera creada correctamente");
-    // Refresca tanto la lista filtrada como el dropdown de sectores (2 llamadas mas).
-    await waitFor(() => expect(getMock.mock.calls.length).toBeGreaterThanOrEqual(3));
+    // Refresca tanto la lista filtrada como el dropdown de sectores.
+    await waitFor(() => expect(getMock.mock.calls.length).toBeGreaterThanOrEqual(4));
   });
 
   it("muestra errores de validacion si falta numero o sector", async () => {
@@ -201,8 +207,7 @@ describe("CocherasManagement", () => {
     await screen.findByText("A-01");
 
     await user.click(screen.getByRole("button", { name: /^editar$/i }));
-    const [, estadoSelect] = screen.getAllByDisplayValue("Habilitada");
-    await user.selectOptions(estadoSelect, "DESHABILITADA");
+    await user.selectOptions(document.getElementById("edit-estado"), "DESHABILITADA");
     await user.click(screen.getByRole("button", { name: /guardar cambios/i }));
 
     expect(window.confirm).toHaveBeenCalled();
@@ -218,8 +223,7 @@ describe("CocherasManagement", () => {
     await screen.findByText("A-01");
 
     await user.click(screen.getByRole("button", { name: /^editar$/i }));
-    const [, estadoSelect] = screen.getAllByDisplayValue("Habilitada");
-    await user.selectOptions(estadoSelect, "DESHABILITADA");
+    await user.selectOptions(document.getElementById("edit-estado"), "DESHABILITADA");
     await user.click(screen.getByRole("button", { name: /guardar cambios/i }));
 
     await waitFor(() =>
@@ -255,5 +259,135 @@ describe("CocherasManagement", () => {
 
     await waitFor(() => expect(deleteMock).toHaveBeenCalledWith("/api/v1/cocheras/1"));
     expect(toastSuccessMock).toHaveBeenCalledWith("Cochera eliminada correctamente");
+  });
+
+    // ---- Dropdown de sector en el alta ----
+
+  it("el alta usa un dropdown de sector con las opciones reales del backend", async () => {
+    mockCocheras([cochera({ sector: "Planta Baja" }), cochera({ id: "2", numero: "A-02", sector: "Subsuelo" })]);
+    render(<CocherasManagement />);
+    await screen.findByText("A-01");
+
+    const selectSector = screen.getByLabelText("Sector");
+    expect(selectSector.tagName).toBe("SELECT");
+    const opciones = Array.from(selectSector.querySelectorAll("option")).map((o) => o.textContent);
+    expect(opciones).toEqual(["Seleccioná un sector", "Planta Baja", "Subsuelo", "+ Otro (sector nuevo)"]);
+  });
+
+  it("elegir '+ Otro' en el alta muestra un input de texto libre para el sector nuevo", async () => {
+    mockCocheras([cochera({ sector: "Planta Baja" })]);
+    const user = userEvent.setup();
+    render(<CocherasManagement />);
+    await screen.findByText("A-01");
+
+    await user.selectOptions(screen.getByLabelText("Sector"), "+ Otro (sector nuevo)");
+
+    const inputSectorNuevo = screen.getByPlaceholderText("Nombre del sector nuevo");
+    expect(inputSectorNuevo).toBeInTheDocument();
+
+    await user.type(inputSectorNuevo, "Playa Externa");
+await user.type(screen.getByLabelText(/^número$/i), "PE-01");
+    await user.click(screen.getByRole("button", { name: /crear cochera/i }));
+
+    await waitFor(() =>
+      expect(postMock).toHaveBeenCalledWith(
+        "/api/v1/cocheras",
+        expect.objectContaining({ sector: "Playa Externa" })
+      )
+    );
+  });
+
+  it("sin ningun sector cargado todavia, el alta arranca directo en modo texto libre", async () => {
+    mockCocheras([], [], []);
+    render(<CocherasManagement />);
+
+    expect(await screen.findByPlaceholderText("Nombre del sector nuevo")).toBeInTheDocument();
+  });
+
+  // ---- Alta en lote ----
+
+  it("el lote arranca con una sola fila y permite agregar mas", async () => {
+    mockCocheras([cochera()]);
+    const user = userEvent.setup();
+    render(<CocherasManagement />);
+    await screen.findByText("A-01");
+
+    expect(screen.getAllByLabelText(/^Número fila/).length).toBe(1);
+
+    await user.click(screen.getByRole("button", { name: /agregar fila/i }));
+
+    expect(screen.getAllByLabelText(/^Número fila/).length).toBe(2);
+  });
+
+  it("no permite quitar la ultima fila del lote", async () => {
+    mockCocheras([cochera()]);
+    render(<CocherasManagement />);
+    await screen.findByText("A-01");
+
+    expect(screen.getByRole("button", { name: /quitar fila/i })).toBeDisabled();
+  });
+
+  it("envia el lote completo a POST /api/v1/cocheras/bulk", async () => {
+    mockCocheras([cochera({ sector: "Planta Baja" })]);
+    postMock.mockResolvedValue({ data: [cochera(), cochera({ id: "2", numero: "A-02" })] });
+    const user = userEvent.setup();
+    render(<CocherasManagement />);
+    await screen.findByText("A-01");
+
+    await user.click(screen.getByRole("button", { name: /agregar fila/i }));
+
+    const numeros = screen.getAllByLabelText(/^Número fila/);
+    await user.type(numeros[0], "L-01");
+    await user.type(numeros[1], "L-02");
+
+    const sectores = screen.getAllByLabelText(/^Sector fila/);
+    await user.selectOptions(sectores[0], "Planta Baja");
+    await user.selectOptions(sectores[1], "Planta Baja");
+
+    await user.click(screen.getByRole("button", { name: /crear 2 cocheras/i }));
+
+    await waitFor(() =>
+      expect(postMock).toHaveBeenCalledWith(
+        "/api/v1/cocheras/bulk",
+        expect.arrayContaining([
+          expect.objectContaining({ numero: "L-01", sector: "Planta Baja" }),
+          expect.objectContaining({ numero: "L-02", sector: "Planta Baja" }),
+        ])
+      )
+    );
+    expect(toastSuccessMock).toHaveBeenCalledWith("2 cocheras creadas correctamente");
+  });
+
+  it("si el backend rechaza el lote completo, muestra su mensaje y no limpia el formulario", async () => {
+    mockCocheras([cochera({ sector: "Planta Baja" })]);
+    postMock.mockRejectedValue({
+      response: { data: { message: "Ya existe una cochera con el numero 'L-01'." } },
+    });
+    const user = userEvent.setup();
+    render(<CocherasManagement />);
+    await screen.findByText("A-01");
+
+    await user.type(screen.getByLabelText(/^Número fila/), "L-01");
+    await user.selectOptions(screen.getByLabelText(/^Sector fila/), "Planta Baja");
+    await user.click(screen.getByRole("button", { name: /crear 1 cochera/i }));
+
+    await waitFor(() =>
+      expect(toastErrorMock).toHaveBeenCalledWith("Ya existe una cochera con el numero 'L-01'.")
+    );
+    // El formulario no se resetea: el admin puede corregir sin volver a tipear todo.
+    expect(screen.getByLabelText(/^Número fila/)).toHaveValue("L-01");
+  });
+
+  it("muestra errores de validacion por fila si falta el numero", async () => {
+    mockCocheras([cochera({ sector: "Planta Baja" })]);
+    const user = userEvent.setup();
+    render(<CocherasManagement />);
+    await screen.findByText("A-01");
+
+    await user.selectOptions(screen.getByLabelText(/^Sector fila/), "Planta Baja");
+    await user.click(screen.getByRole("button", { name: /crear 1 cochera/i }));
+
+    expect(await screen.findByText("El número es obligatorio")).toBeInTheDocument();
+    expect(postMock).not.toHaveBeenCalled();
   });
 });

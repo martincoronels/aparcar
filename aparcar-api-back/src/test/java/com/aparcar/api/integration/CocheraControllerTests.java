@@ -27,6 +27,7 @@ import java.time.LocalDate;
 import java.util.Set;
 import java.util.UUID;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.springframework.security.core.context.SecurityContextHolder.getContext;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.securityContext;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -432,5 +433,129 @@ public class CocheraControllerTests {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[?(@.numero == 'A-01')].disponibleEnFecha").value(true))
                 .andExpect(jsonPath("$[?(@.numero == 'A-02')].disponibleEnFecha").value(false));
+    }
+
+    // ---- POST /bulk ----
+
+    @Test
+    @WithAnonymousUser
+    @DisplayName("[Caja negra] POST /api/v1/cocheras/bulk devuelve 401 para anonimos")
+    void crearEnLoteDevuelve401ParaAnonimos() throws Exception {
+        mockMvc.perform(post("/api/v1/cocheras/bulk")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("[]"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @WithMockUser(authorities = "USER")
+    @DisplayName("[Caja negra] POST /api/v1/cocheras/bulk devuelve 403 para USER sin rol ADMIN")
+    void crearEnLoteDevuelve403ParaUsuarioSinAdmin() throws Exception {
+        var context = getContext();
+
+        mockMvc.perform(post("/api/v1/cocheras/bulk")
+                        .with(securityContext(context))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("[]"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @WithMockUser(authorities = "ADMIN")
+    @DisplayName("[Caja negra] POST /api/v1/cocheras/bulk crea todas las cocheras del lote")
+    void crearEnLoteCreaTodasLasCocherasDelLote() throws Exception {
+        var context = getContext();
+
+        mockMvc.perform(post("/api/v1/cocheras/bulk")
+                        .with(securityContext(context))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                [
+                                    {"numero":"A-01","sector":"Planta Baja","tipo":"AUTO","estado":"HABILITADA"},
+                                    {"numero":"A-02","sector":"Subsuelo","tipo":"MOTO","estado":"HABILITADA"}
+                                ]
+                                """))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.length()").value(2))
+                .andExpect(jsonPath("$[0].numero").value("A-01"))
+                .andExpect(jsonPath("$[1].numero").value("A-02"));
+
+        assertEquals(2, cocheraRepository.count());
+    }
+
+    @Test
+    @WithMockUser(authorities = "ADMIN")
+    @DisplayName("[Caja negra] POST /api/v1/cocheras/bulk no crea ninguna si una cochera del lote es invalida (todo-o-nada)")
+    void crearEnLoteNoCreaNingunaSiUnaEsInvalida() throws Exception {
+        var context = getContext();
+
+        mockMvc.perform(post("/api/v1/cocheras/bulk")
+                        .with(securityContext(context))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                [
+                                    {"numero":"A-01","sector":"Planta Baja","tipo":"AUTO","estado":"HABILITADA"},
+                                    {"numero":"","sector":"Subsuelo","tipo":"MOTO","estado":"HABILITADA"}
+                                ]
+                                """))
+                .andExpect(status().isBadRequest());
+
+        assertEquals(0, cocheraRepository.count());
+    }
+
+    @Test
+    @WithMockUser(authorities = "ADMIN")
+    @DisplayName("[Caja negra] POST /api/v1/cocheras/bulk devuelve 400 y no crea nada si un numero ya existe en la base")
+    void crearEnLoteDevuelve400SiNumeroYaExisteEnLaBase() throws Exception {
+        crearCochera("A-01", CocheraTipo.AUTO, CocheraEstado.HABILITADA);
+        var context = getContext();
+
+        mockMvc.perform(post("/api/v1/cocheras/bulk")
+                        .with(securityContext(context))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                [
+                                    {"numero":"A-02","sector":"Subsuelo","tipo":"MOTO","estado":"HABILITADA"},
+                                    {"numero":"A-01","sector":"Planta Baja","tipo":"AUTO","estado":"HABILITADA"}
+                                ]
+                                """))
+                .andExpect(status().isBadRequest());
+
+        assertEquals(1, cocheraRepository.count());
+    }
+
+    // ---- GET /sectores ----
+
+    @Test
+    @WithAnonymousUser
+    @DisplayName("[Caja negra] GET /api/v1/cocheras/sectores devuelve 401 para anonimos")
+    void listarSectoresDevuelve401ParaAnonimos() throws Exception {
+        mockMvc.perform(get("/api/v1/cocheras/sectores")).andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @WithMockUser(authorities = "USER")
+    @DisplayName("[Caja negra] GET /api/v1/cocheras/sectores devuelve 403 para USER sin rol ADMIN")
+    void listarSectoresDevuelve403ParaUsuarioSinAdmin() throws Exception {
+        var context = getContext();
+
+        mockMvc.perform(get("/api/v1/cocheras/sectores").with(securityContext(context)))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @WithMockUser(authorities = "ADMIN")
+    @DisplayName("[Caja negra] GET /api/v1/cocheras/sectores devuelve los sectores distintos, sin repetidos")
+    void listarSectoresDevuelveSectoresDistintos() throws Exception {
+        crearCocheraConSector("A-01", "Planta Baja");
+        crearCocheraConSector("A-02", "Planta Baja");
+        crearCocheraConSector("S-01", "Subsuelo");
+        var context = getContext();
+
+        mockMvc.perform(get("/api/v1/cocheras/sectores").with(securityContext(context)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(2))
+                .andExpect(jsonPath("$[0]").value("Planta Baja"))
+                .andExpect(jsonPath("$[1]").value("Subsuelo"));
     }
 }

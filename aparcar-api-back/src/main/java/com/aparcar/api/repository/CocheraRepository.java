@@ -32,4 +32,7 @@ public interface CocheraRepository extends JpaRepository<Cochera, UUID> {
             @Param("sector") String sector,
             @Param("tipo") CocheraTipo tipo,
             @Param("estado") CocheraEstado estado);
+
+    @Query("SELECT DISTINCT c.sector FROM Cochera c ORDER BY c.sector")
+    List<String> findDistinctSectores();
 }

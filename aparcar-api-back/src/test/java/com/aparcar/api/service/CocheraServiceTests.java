@@ -27,8 +27,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 @UnitTests
 public class CocheraServiceTests {
@@ -304,5 +303,95 @@ public class CocheraServiceTests {
         var dtoOcupada = resultado.stream().filter(c -> c.numero().equals("A-02")).findFirst().orElseThrow();
         assertEquals(true, dtoLibre.disponibleEnFecha());
         assertEquals(false, dtoOcupada.disponibleEnFecha());
+    }
+
+    // ---- crearEnLote ----
+
+    @Test
+    @DisplayName("crearEnLote lanza ValidationException si la lista esta vacia")
+    void crearEnLoteLanzaValidationExceptionSiListaVacia() {
+        assertThrows(ValidationException.class, () -> cocheraService.crearEnLote(List.of()));
+    }
+
+    @Test
+    @DisplayName("crearEnLote lanza ValidationException si hay un numero repetido dentro del propio lote")
+    void crearEnLoteLanzaValidationExceptionSiNumeroRepetidoEnElLote() {
+        CocheraRequestDto dto1 = new CocheraRequestDto();
+        dto1.setNumero("A-01");
+        dto1.setSector("Planta Baja");
+        dto1.setTipo(CocheraTipo.AUTO);
+        dto1.setEstado(CocheraEstado.HABILITADA);
+
+        CocheraRequestDto dto2 = new CocheraRequestDto();
+        dto2.setNumero("A-01");
+        dto2.setSector("Subsuelo");
+        dto2.setTipo(CocheraTipo.MOTO);
+        dto2.setEstado(CocheraEstado.HABILITADA);
+
+        assertThrows(ValidationException.class, () -> cocheraService.crearEnLote(List.of(dto1, dto2)));
+        verify(cocheraRepository, never()).saveAll(any());
+    }
+
+    @Test
+    @DisplayName("crearEnLote lanza ValidationException si un numero ya existe en la base, sin guardar nada")
+    void crearEnLoteLanzaValidationExceptionSiNumeroYaExisteEnLaBase() {
+        CocheraRequestDto dto1 = new CocheraRequestDto();
+        dto1.setNumero("A-01");
+        dto1.setSector("Planta Baja");
+        dto1.setTipo(CocheraTipo.AUTO);
+        dto1.setEstado(CocheraEstado.HABILITADA);
+
+        CocheraRequestDto dto2 = new CocheraRequestDto();
+        dto2.setNumero("A-02");
+        dto2.setSector("Subsuelo");
+        dto2.setTipo(CocheraTipo.MOTO);
+        dto2.setEstado(CocheraEstado.HABILITADA);
+
+        when(cocheraRepository.existsByNumero("A-01")).thenReturn(false);
+        when(cocheraRepository.existsByNumero("A-02")).thenReturn(true);
+
+        assertThrows(ValidationException.class, () -> cocheraService.crearEnLote(List.of(dto1, dto2)));
+        verify(cocheraRepository, never()).saveAll(any());
+    }
+
+    @Test
+    @DisplayName("crearEnLote guarda todas las cocheras del lote cuando son validas")
+    void crearEnLoteGuardaTodasLasCocherasCuandoSonValidas() {
+        CocheraRequestDto dto1 = new CocheraRequestDto();
+        dto1.setNumero("A-01");
+        dto1.setSector("Planta Baja");
+        dto1.setTipo(CocheraTipo.AUTO);
+        dto1.setEstado(CocheraEstado.HABILITADA);
+
+        CocheraRequestDto dto2 = new CocheraRequestDto();
+        dto2.setNumero("A-02");
+        dto2.setSector("Subsuelo");
+        dto2.setTipo(CocheraTipo.MOTO);
+        dto2.setEstado(CocheraEstado.HABILITADA);
+
+        when(cocheraRepository.existsByNumero(any())).thenReturn(false);
+        when(cocheraRepository.saveAll(any())).thenAnswer(i -> {
+            List<Cochera> lista = i.getArgument(0);
+            lista.forEach(c -> c.setId(UUID.randomUUID()));
+            return lista;
+        });
+
+        var resultado = cocheraService.crearEnLote(List.of(dto1, dto2));
+
+        assertEquals(2, resultado.size());
+        assertEquals("A-01", resultado.get(0).numero());
+        assertEquals("A-02", resultado.get(1).numero());
+    }
+
+    // ---- listarSectores ----
+
+    @Test
+    @DisplayName("listarSectores delega en el repository")
+    void listarSectoresDelegaEnElRepository() {
+        when(cocheraRepository.findDistinctSectores()).thenReturn(List.of("Planta Baja", "Subsuelo"));
+
+        var sectores = cocheraService.listarSectores();
+
+        assertEquals(List.of("Planta Baja", "Subsuelo"), sectores);
     }
 }
