@@ -164,7 +164,8 @@ public class ReservaService implements IReservaService {
                 reserva.getCochera().getNumero(),
                 reserva.getCochera().getSector(),
                 reserva.getCochera().getTipo(),
-                reserva.getCochera().getEstado());
+                reserva.getCochera().getEstado(),
+                null);
 
         return new ReservaResponseDto(
                 reserva.getId(),

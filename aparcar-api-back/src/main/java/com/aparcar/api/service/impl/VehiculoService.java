@@ -5,6 +5,7 @@ import com.aparcar.api.dto.reserva.VehiculoResponseDto;
 import com.aparcar.api.dto.reserva.VehiculoUpdateDto;
 import com.aparcar.api.entity.auth.Visitante;
 import com.aparcar.api.entity.reserva.Vehiculo;
+import com.aparcar.api.entity.reserva.VehiculoTipo;
 import com.aparcar.api.exception.NotFoundException;
 import com.aparcar.api.exception.ValidationException;
 import com.aparcar.api.repository.ReservaRepository;
@@ -25,6 +26,16 @@ public class VehiculoService implements IVehiculoService {
     private final VisitanteRepository visitanteRepository;
     private final ReservaRepository reservaRepository;
 
+    // Formatos vigentes en Argentina. Auto y Carga comparten el mismo esquema
+    // (asumido: en Argentina los vehiculos de carga patentan con el mismo
+    // formato alfanumerico que los autos; confirmar con el dominio real si
+    // hay dudas). Moto tiene un esquema distinto e incompatible con el de
+    // Auto/Carga, por eso la validacion depende del tipo.
+    private static final String AUTO_ANTERIOR = "^[A-Za-z]{3}[0-9]{3}$";
+    private static final String AUTO_MERCOSUR = "^[A-Za-z]{2}[0-9]{3}[A-Za-z]{2}$";
+    private static final String MOTO_ANTERIOR = "^[0-9]{3}[A-Za-z]{3}$";
+    private static final String MOTO_MERCOSUR = "^[A-Za-z][0-9]{3}[A-Za-z]{3}$";
+
     @Override
     public VehiculoResponseDto crear(VehiculoRequestDto dto) {
         if (dto.getVisitanteId() == null) {
@@ -35,6 +46,8 @@ public class VehiculoService implements IVehiculoService {
                 .orElseThrow(() -> new NotFoundException("Visitante no encontrado."));
 
         String patente = dto.getPatente().toUpperCase();
+        validarFormatoPatente(patente, dto.getTipo());
+
         if (vehiculoRepository.existsByPatente(patente)) {
             throw new ValidationException("Ya existe un vehiculo con esa patente.");
         }
@@ -84,6 +97,8 @@ public class VehiculoService implements IVehiculoService {
         verificarPropietario(vehiculo, requesterEmail, requesterIsAdmin);
 
         String patente = dto.getPatente().toUpperCase();
+        validarFormatoPatente(patente, dto.getTipo());
+
         boolean cambiaPatente = !vehiculo.getPatente().equals(patente);
         if (cambiaPatente && vehiculoRepository.existsByPatente(patente)) {
             throw new ValidationException("Ya existe un vehiculo con esa patente.");
@@ -105,6 +120,27 @@ public class VehiculoService implements IVehiculoService {
         }
 
         vehiculoRepository.delete(vehiculo);
+    }
+
+    /**
+     * Valida que la patente (ya en mayusculas) tenga un formato vigente en
+     * Argentina para el tipo de vehiculo indicado.
+     *
+     * @throws ValidationException Si el formato no corresponde al tipo.
+     */
+    private void validarFormatoPatente(String patente, VehiculoTipo tipo) {
+        boolean valido = switch (tipo) {
+            case AUTO, CARGA -> patente.matches(AUTO_ANTERIOR) || patente.matches(AUTO_MERCOSUR);
+            case MOTO -> patente.matches(MOTO_ANTERIOR) || patente.matches(MOTO_MERCOSUR);
+        };
+
+        if (!valido) {
+            String formatosEsperados = tipo == VehiculoTipo.MOTO
+                    ? "123ABC (formato anterior) o A123BCD (Mercosur)"
+                    : "ABC123 (formato anterior) o AB123CD (Mercosur)";
+            throw new ValidationException(
+                    "La patente no tiene un formato valido para " + tipo + ". Formatos esperados: " + formatosEsperados + ".");
+        }
     }
 
     private void verificarPropietario(Vehiculo vehiculo, String requesterEmail, boolean requesterIsAdmin) {

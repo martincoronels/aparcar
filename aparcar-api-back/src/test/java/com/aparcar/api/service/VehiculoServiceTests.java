@@ -6,7 +6,6 @@ import com.aparcar.api.dto.reserva.VehiculoUpdateDto;
 import com.aparcar.api.entity.auth.Visitante;
 import com.aparcar.api.entity.reserva.Vehiculo;
 import com.aparcar.api.entity.reserva.VehiculoTipo;
-import com.aparcar.api.entity.auth.Visitante;
 import com.aparcar.api.exception.NotFoundException;
 import com.aparcar.api.exception.ValidationException;
 import com.aparcar.api.repository.ReservaRepository;
@@ -16,6 +15,8 @@ import com.aparcar.api.service.impl.VehiculoService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
@@ -125,8 +126,6 @@ public class VehiculoServiceTests {
     @Test
     @DisplayName("editar lanza AccessDeniedException si quien pide no es ADMIN ni el dueño")
     void editarLanzaAccessDeniedExceptionSiNoEsElDueño() {
-        // El dueño del vehiculo ya no es un visitante con una cuenta colgada:
-        // es la cuenta.
         Visitante dueño = new Visitante();
         dueño.setEmail("dueño@test.com");
         Vehiculo vehiculo = new Vehiculo();
@@ -154,16 +153,18 @@ public class VehiculoServiceTests {
         vehiculo.setVisitante(dueño);
 
         VehiculoUpdateDto dto = new VehiculoUpdateDto();
-        dto.setPatente("XYZ999");
+        // Formato Mercosur de MOTO real (1 letra + 3 numeros + 3 letras), no
+        // el de auto -- antes decia "XYZ999", que no es valido para MOTO.
+        dto.setPatente("A123BCD");
         dto.setTipo(VehiculoTipo.MOTO);
 
         when(vehiculoRepository.findById(any())).thenReturn(Optional.of(vehiculo));
-        when(vehiculoRepository.existsByPatente("XYZ999")).thenReturn(false);
+        when(vehiculoRepository.existsByPatente("A123BCD")).thenReturn(false);
         when(vehiculoRepository.save(any())).thenAnswer(i -> i.getArgument(0));
 
         var result = vehiculoService.editar(UUID.randomUUID(), dto, "admin@test.com", true);
 
-        assertEquals("XYZ999", result.patente());
+        assertEquals("A123BCD", result.patente());
     }
 
     @Test
@@ -179,5 +180,84 @@ public class VehiculoServiceTests {
         when(reservaRepository.existsByVehiculoId(id)).thenReturn(true);
 
         assertThrows(ValidationException.class, () -> vehiculoService.eliminar(id, "dueño@test.com", false));
+    }
+
+    // ---- Validacion de patente segun tipo ----
+
+    @ParameterizedTest(name = "AUTO acepta patente valida: {0}")
+    @DisplayName("crear acepta ambos formatos vigentes de patente para AUTO")
+    @CsvSource({"ABC123", "AB123CD"})
+    void crearAceptaAmbosFormatosParaAuto(String patente) {
+        dto.setPatente(patente);
+        dto.setTipo(VehiculoTipo.AUTO);
+        when(visitanteRepository.findById(visitante.getId())).thenReturn(Optional.of(visitante));
+        when(vehiculoRepository.existsByPatente(patente)).thenReturn(false);
+        when(vehiculoRepository.save(any())).thenAnswer(i -> {
+            Vehiculo v = i.getArgument(0);
+            v.setId(UUID.randomUUID());
+            return v;
+        });
+
+        var response = vehiculoService.crear(dto);
+
+        assertEquals(patente, response.patente());
+    }
+
+    @ParameterizedTest(name = "MOTO acepta patente valida: {0}")
+    @DisplayName("crear acepta ambos formatos vigentes de patente para MOTO")
+    @CsvSource({"123ABC", "A123BCD"})
+    void crearAceptaAmbosFormatosParaMoto(String patente) {
+        dto.setPatente(patente);
+        dto.setTipo(VehiculoTipo.MOTO);
+        when(visitanteRepository.findById(visitante.getId())).thenReturn(Optional.of(visitante));
+        when(vehiculoRepository.existsByPatente(patente)).thenReturn(false);
+        when(vehiculoRepository.save(any())).thenAnswer(i -> {
+            Vehiculo v = i.getArgument(0);
+            v.setId(UUID.randomUUID());
+            return v;
+        });
+
+        var response = vehiculoService.crear(dto);
+
+        assertEquals(patente, response.patente());
+    }
+
+    @ParameterizedTest(name = "CARGA acepta patente valida: {0}")
+    @DisplayName("crear acepta ambos formatos vigentes de patente para CARGA (mismo esquema que AUTO)")
+    @CsvSource({"ABC123", "AB123CD"})
+    void crearAceptaAmbosFormatosParaCarga(String patente) {
+        dto.setPatente(patente);
+        dto.setTipo(VehiculoTipo.CARGA);
+        when(visitanteRepository.findById(visitante.getId())).thenReturn(Optional.of(visitante));
+        when(vehiculoRepository.existsByPatente(patente)).thenReturn(false);
+        when(vehiculoRepository.save(any())).thenAnswer(i -> {
+            Vehiculo v = i.getArgument(0);
+            v.setId(UUID.randomUUID());
+            return v;
+        });
+
+        var response = vehiculoService.crear(dto);
+
+        assertEquals(patente, response.patente());
+    }
+
+    @Test
+    @DisplayName("crear rechaza una patente con formato de auto para un vehiculo MOTO")
+    void crearRechazaFormatoDeAutoParaMoto() {
+        dto.setPatente("ABC123");
+        dto.setTipo(VehiculoTipo.MOTO);
+        when(visitanteRepository.findById(visitante.getId())).thenReturn(Optional.of(visitante));
+
+        assertThrows(ValidationException.class, () -> vehiculoService.crear(dto));
+    }
+
+    @Test
+    @DisplayName("crear rechaza una patente con formato de moto para un vehiculo AUTO")
+    void crearRechazaFormatoDeMotoParaAuto() {
+        dto.setPatente("123ABC");
+        dto.setTipo(VehiculoTipo.AUTO);
+        when(visitanteRepository.findById(visitante.getId())).thenReturn(Optional.of(visitante));
+
+        assertThrows(ValidationException.class, () -> vehiculoService.crear(dto));
     }
 }

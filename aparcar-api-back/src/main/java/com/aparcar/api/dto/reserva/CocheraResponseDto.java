@@ -10,6 +10,8 @@ public record CocheraResponseDto(
         String numero,
         String sector,
         CocheraTipo tipo,
-        CocheraEstado estado
+        CocheraEstado estado,
+        // null si no se pidió el parametro "fecha" en el listado; true/false si se pidió.
+        Boolean disponibleEnFecha
 ) {
 }

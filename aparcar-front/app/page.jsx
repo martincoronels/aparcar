@@ -106,8 +106,8 @@ export default function Home() {
   }, [isHydrated, isAuthenticated, user, router]);
 
   return (
-    <div className="min-h-screen bg-white">
-      <header className="sticky top-0 z-20 border-b border-[#002147]/10 bg-white/90 backdrop-blur">
+    <div className="min-h-screen bg-bg">
+      <header className="sticky top-0 z-20 border-b border-ink/10 bg-surface/90 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4 sm:px-6">
           <div className="flex items-center gap-3">
             <img
@@ -115,7 +115,7 @@ export default function Home() {
               alt="AparcAR"
               className="h-10 w-auto object-contain"
             />
-            <span className="text-lg font-extrabold tracking-tight text-[#002147]">
+            <span className="text-lg font-extrabold tracking-tight text-ink">
               AparcAR
             </span>
           </div>
@@ -125,7 +125,7 @@ export default function Home() {
               <Link
                 key={link.href}
                 href={link.href}
-                className="text-sm font-medium text-[#002147]/70 transition-colors hover:text-[#002147]"
+                className="text-sm font-medium text-ink/70 transition-colors hover:text-ink"
               >
                 {link.label}
               </Link>
@@ -133,7 +133,7 @@ export default function Home() {
 
             <Link
               href="/login"
-              className="rounded-xl bg-[#0cb7f2] px-5 py-2.5 text-sm font-semibold text-white transition-all hover:bg-[#002147]"
+              className="rounded-xl bg-accent px-5 py-2.5 text-sm font-semibold text-white transition-all hover:bg-brand"
             >
               Iniciar sesión
             </Link>
@@ -144,7 +144,7 @@ export default function Home() {
             onClick={() => setMenuOpen((v) => !v)}
             aria-label="Abrir menú"
             aria-expanded={menuOpen}
-            className="flex h-10 w-10 items-center justify-center rounded-lg text-[#002147] md:hidden"
+            className="flex h-10 w-10 items-center justify-center rounded-lg text-ink md:hidden"
           >
             <svg viewBox="0 0 24 24" fill="none" className="h-6 w-6">
               {menuOpen ? (
@@ -167,14 +167,14 @@ export default function Home() {
         </div>
 
         {menuOpen && (
-          <div className="border-t border-[#002147]/10 px-4 py-4 md:hidden">
+          <div className="border-t border-ink/10 px-4 py-4 md:hidden">
             <div className="flex flex-col gap-4">
               {NAV_LINKS.map((link) => (
                 <Link
                   key={link.href}
                   href={link.href}
                   onClick={() => setMenuOpen(false)}
-                  className="text-sm font-medium text-[#002147]/70"
+                  className="text-sm font-medium text-ink/70"
                 >
                   {link.label}
                 </Link>
@@ -182,7 +182,7 @@ export default function Home() {
 
               <Link
                 href="/login"
-                className="rounded-xl bg-[#0cb7f2] px-5 py-3 text-center text-sm font-semibold text-white"
+                className="rounded-xl bg-accent px-5 py-3 text-center text-sm font-semibold text-white"
               >
                 Iniciar sesión
               </Link>
@@ -193,11 +193,11 @@ export default function Home() {
 
       <main>
         <section className="mx-auto max-w-6xl px-4 py-20 text-center sm:px-6 sm:py-28">
-          <h1 className="mx-auto max-w-3xl text-4xl font-extrabold tracking-tight text-[#002147] sm:text-6xl">
+          <h1 className="mx-auto max-w-3xl text-4xl font-extrabold tracking-tight text-ink sm:text-6xl">
             Nadie debería dar vueltas buscando dónde estacionar
           </h1>
 
-          <p className="mx-auto mt-6 max-w-2xl text-lg text-[#002147]/60">
+          <p className="mx-auto mt-6 max-w-2xl text-lg text-ink/60">
             AparcAR administra las cocheras de tu edificio, universidad,
             sanatorio o evento: cada visitante entra sabiendo que ya tiene un
             lugar asignado.
@@ -206,16 +206,16 @@ export default function Home() {
           <div className="mt-10 flex justify-center">
             <Link
               href="/login"
-              className="rounded-xl bg-[#0cb7f2] px-8 py-4 text-base font-semibold text-white transition-all hover:bg-[#002147]"
+              className="rounded-xl bg-accent px-8 py-4 text-base font-semibold text-white transition-all hover:bg-brand"
             >
               Iniciar sesión
             </Link>
           </div>
         </section>
 
-        <section id="servicio" className="bg-[#002147]/[0.03] py-20">
+        <section id="servicio" className="bg-ink/3 py-20">
           <div className="mx-auto max-w-6xl px-4 sm:px-6">
-            <h2 className="text-center text-3xl font-extrabold tracking-tight text-[#002147]">
+            <h2 className="text-center text-3xl font-extrabold tracking-tight text-ink">
               Todo lo que necesita tu predio
             </h2>
 
@@ -244,15 +244,15 @@ export default function Home() {
               ].map(({ icon: Icon, title, text }) => (
                 <div
                   key={title}
-                  className="rounded-2xl bg-white p-6 shadow-lg shadow-[#002147]/5 ring-1 ring-[#002147]/10"
+                  className="rounded-2xl bg-surface p-6 shadow-lg shadow-ink/5 ring-1 ring-ink/10"
                 >
-                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-[#0cb7f2]/10 text-[#0cb7f2]">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-accent/10 text-accent">
                     <Icon className="h-6 w-6" />
                   </div>
 
-                  <h3 className="mt-4 font-bold text-[#002147]">{title}</h3>
+                  <h3 className="mt-4 font-bold text-ink">{title}</h3>
 
-                  <p className="mt-2 text-sm text-[#002147]/60">{text}</p>
+                  <p className="mt-2 text-sm text-ink/60">{text}</p>
                 </div>
               ))}
             </div>
@@ -261,7 +261,7 @@ export default function Home() {
 
         <section id="como-funciona" className="py-20">
           <div className="mx-auto max-w-4xl px-4 sm:px-6">
-            <h2 className="text-center text-3xl font-extrabold tracking-tight text-[#002147]">
+            <h2 className="text-center text-3xl font-extrabold tracking-tight text-ink">
               Cómo funciona
             </h2>
 
@@ -284,13 +284,13 @@ export default function Home() {
                 },
               ].map(({ step, title, text }) => (
                 <div key={step} className="text-center">
-                  <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-[#002147] text-sm font-bold text-white">
+                  <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-brand text-sm font-bold text-white">
                     {step}
                   </div>
 
-                  <h3 className="mt-4 font-bold text-[#002147]">{title}</h3>
+                  <h3 className="mt-4 font-bold text-ink">{title}</h3>
 
-                  <p className="mt-2 text-sm text-[#002147]/60">{text}</p>
+                  <p className="mt-2 text-sm text-ink/60">{text}</p>
                 </div>
               ))}
             </div>
@@ -298,7 +298,7 @@ export default function Home() {
         </section>
       </main>
 
-      <footer className="border-t border-[#002147]/10 py-8 text-center text-sm text-[#002147]/50">
+      <footer className="border-t border-ink/10 py-8 text-center text-sm text-ink/50">
         AparcAR — Proyecto Integral de Desarrollo, UCAio.
       </footer>
     </div>

@@ -99,7 +99,7 @@ public class VisitanteServiceTests {
                 LocalDate.now(),
                 new VisitanteResponseDto(UUID.randomUUID(), "Juan Perez", "30111222", null, "juan@mail.com"),
                 new VehiculoResponseDto(VEHICULO_ID, "ABC123", VehiculoTipo.AUTO, UUID.randomUUID()),
-                new CocheraResponseDto(COCHERA_ID, "A-01", "Planta Baja", CocheraTipo.AUTO, CocheraEstado.HABILITADA),
+                new CocheraResponseDto(COCHERA_ID, "A-01", "Planta Baja", CocheraTipo.AUTO, CocheraEstado.HABILITADA, null),
                 ReservaEstado.CONFIRMADA,
                 Instant.now());
     }

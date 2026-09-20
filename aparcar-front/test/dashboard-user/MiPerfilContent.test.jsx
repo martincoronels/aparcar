@@ -99,31 +99,25 @@ describe("MiPerfilContent", () => {
     await user.type(screen.getByPlaceholderText("ABC123 / AB123CD"), "123");
     await user.click(screen.getByRole("button", { name: /agregar/i }));
 
-    expect(await screen.findByText("Formato inválido (ej: ABC123 o AB123CD)")).toBeInTheDocument();
+    expect(await screen.findByText("Formato inválido para auto/carga (ej: ABC123 o AB123CD)")).toBeInTheDocument();
     expect(postMock).not.toHaveBeenCalled();
   });
 
-  it("agrega un vehiculo propio sin mandar visitanteId y refresca la lista", async () => {
+  it("agregar un vehiculo con patente de auto para un tipo MOTO muestra el error especifico de moto", async () => {
     mockPerfil({ vehiculos: [] });
-    postMock.mockResolvedValue({ data: { id: "veh1", patente: "ABC123", tipo: "AUTO" } });
     const user = userEvent.setup();
     render(<MiPerfilContent />);
     await screen.findByText("Juan Perez");
 
+    await user.selectOptions(screen.getByRole("combobox"), "MOTO");
     await user.type(screen.getByPlaceholderText("ABC123 / AB123CD"), "ABC123");
     await user.click(screen.getByRole("button", { name: /agregar/i }));
 
-    await waitFor(() => expect(postMock).toHaveBeenCalledWith("/api/v1/vehiculos", { patente: "ABC123", tipo: "AUTO" }));
-    expect(toastSuccessMock).toHaveBeenCalledWith("Vehículo agregado correctamente");
-    // Recarga los vehiculos: GET /vehiculos se llama de nuevo despues del alta.
-    await waitFor(() =>
-      expect(getMock.mock.calls.filter((c) => c[0] === "/api/v1/vehiculos").length).toBeGreaterThanOrEqual(2)
-    );
+    expect(await screen.findByText("Formato inválido para moto (ej: 123ABC o A123BCD)")).toBeInTheDocument();
+    expect(postMock).not.toHaveBeenCalled();
   });
 
-  // El formulario de reserva vive en un componente hermano y ofrece las
-  // patentes propias, asi que tiene que enterarse cuando cambian.
-  it("avisa al padre cuando cambian los vehiculos", async () => {
+  it("agrega un vehiculo propio sin mandar visitanteId y refresca la lista", async () => {
     mockPerfil({ vehiculos: [] });
     postMock.mockResolvedValue({ data: {} });
     const onVehiculosCambiaron = vi.fn();

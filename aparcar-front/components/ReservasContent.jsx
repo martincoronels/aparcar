@@ -14,8 +14,8 @@ const reservaSchema = z.object({
 });
 
 const inputClasses =
-  "block w-full rounded-xl border-0 py-3 px-4 text-[#002147] bg-white ring-1 ring-inset ring-[#002147]/20 placeholder:text-[#002147]/40 focus:z-10 focus:ring-2 focus:ring-inset focus:ring-[#0cb7f2] sm:text-sm sm:leading-6 transition-all disabled:opacity-50";
-const labelClasses = "block text-sm font-medium text-[#002147]/70 mb-1";
+  "block w-full rounded-xl border-0 py-3 px-4 text-ink bg-surface ring-1 ring-inset ring-ink/20 placeholder:text-ink/40 focus:z-10 focus:ring-2 focus:ring-inset focus:ring-accent sm:text-sm sm:leading-6 transition-all disabled:opacity-50";
+const labelClasses = "block text-sm font-medium text-ink/70 mb-1";
 const today = () => new Date().toISOString().split("T")[0];
 
 function EstadoBadge({ estado }) {
@@ -24,8 +24,8 @@ function EstadoBadge({ estado }) {
     <span
       className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
         isConfirmada
-          ? "bg-[#0cb7f2]/10 text-[#0cb7f2] ring-1 ring-inset ring-[#0cb7f2]/30"
-          : "bg-[#002147]/5 text-[#002147]/50 ring-1 ring-inset ring-[#002147]/10"
+          ? "bg-accent/10 text-accent ring-1 ring-inset ring-accent/30"
+          : "bg-ink/5 text-ink/50 ring-1 ring-inset ring-ink/10"
       }`}
     >
       {estado}
@@ -189,17 +189,17 @@ export default function ReservasContent({ modo = "user", onOcupacionCambiada, re
   return (
     <div className="mx-auto max-w-3xl space-y-10">
       <div>
-        <h1 className="text-3xl font-extrabold tracking-tight text-[#002147] mb-2">Nueva reserva</h1>
-        <p className="text-sm text-[#002147]/60">
+        <h1 className="text-3xl font-extrabold tracking-tight text-ink mb-2">Nueva reserva</h1>
+        <p className="text-sm text-ink/60">
           {esAdmin
             ? "Ingresá la patente del vehículo y elegí una cochera disponible para la fecha."
             : "Elegí uno de tus vehículos y una cochera disponible para la fecha."}
         </p>
       </div>
 
-      <div className="rounded-2xl bg-white p-8 shadow-xl shadow-[#002147]/10 ring-1 ring-[#002147]/15">
+      <div className="rounded-2xl bg-surface p-8 shadow-xl shadow-ink/10 ring-1 ring-ink/15">
         {sinVehiculos ? (
-          <p className="text-sm text-[#002147]/60">
+          <p className="text-sm text-ink/60">
             Cargá al menos un vehículo en &quot;Mis datos&quot; para poder reservar.
           </p>
         ) : (
@@ -241,12 +241,12 @@ export default function ReservasContent({ modo = "user", onOcupacionCambiada, re
               {errors.patente && <p className="mt-1 text-sm text-red-500">{errors.patente.message}</p>}
 
               {esAdmin && patente && !vehiculoEncontrado && (
-                <p className="mt-1 text-sm text-[#002147]/50">
+                <p className="mt-1 text-sm text-ink/50">
                   No hay ningún vehículo registrado con esa patente.
                 </p>
               )}
               {esAdmin && vehiculoEncontrado && visitanteEncontrado && (
-                <p className="mt-1 text-sm text-[#0cb7f2]">
+                <p className="mt-1 text-sm text-accent">
                   {visitanteEncontrado.nombre} — {vehiculoEncontrado.tipo}
                 </p>
               )}
@@ -287,7 +287,7 @@ export default function ReservasContent({ modo = "user", onOcupacionCambiada, re
               </select>
               {errors.cocheraId && <p className="mt-1 text-sm text-red-500">{errors.cocheraId.message}</p>}
               {vehiculoEncontrado && fecha && cocheras.length === 0 && (
-                <p className="mt-1 text-sm text-[#002147]/50">No hay cocheras disponibles para esa fecha.</p>
+                <p className="mt-1 text-sm text-ink/50">No hay cocheras disponibles para esa fecha.</p>
               )}
             </div>
           </div>
@@ -296,7 +296,7 @@ export default function ReservasContent({ modo = "user", onOcupacionCambiada, re
             <button
               type="submit"
               disabled={isSubmitting || !cocheraId}
-              className="group relative flex w-full justify-center rounded-xl bg-[#0cb7f2] px-3 py-3 text-sm font-semibold text-white hover:bg-[#002147] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0cb7f2] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              className="group relative flex w-full justify-center rounded-xl bg-accent px-3 py-3 text-sm font-semibold text-white hover:bg-brand focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isSubmitting ? "Reservando..." : "Confirmar reserva"}
             </button>
@@ -306,27 +306,27 @@ export default function ReservasContent({ modo = "user", onOcupacionCambiada, re
       </div>
 
       <div>
-        <h2 className="text-xl font-bold text-[#002147] mb-4">
+        <h2 className="text-xl font-bold text-ink mb-4">
           {esAdmin ? "Todas las reservas" : "Mis reservas"}
         </h2>
-        <div className="rounded-2xl bg-white shadow-xl shadow-[#002147]/10 ring-1 ring-[#002147]/15 overflow-hidden">
+        <div className="rounded-2xl bg-surface shadow-xl shadow-ink/10 ring-1 ring-ink/15 overflow-hidden">
           {loadingReservas ? (
             <div className="flex items-center justify-center p-8">
-              <div className="h-6 w-6 animate-spin rounded-full border-4 border-[#0cb7f2] border-t-transparent" />
+              <div className="h-6 w-6 animate-spin rounded-full border-4 border-accent border-t-transparent" />
             </div>
           ) : reservas.length === 0 ? (
-            <p className="p-6 text-sm text-[#002147]/60">
+            <p className="p-6 text-sm text-ink/60">
               {esAdmin ? "Todavía no hay reservas cargadas." : "Todavía no tenés reservas."}
             </p>
           ) : (
-            <ul className="divide-y divide-[#002147]/10">
+            <ul className="divide-y divide-ink/10">
               {reservas.map((r) => (
                 <li key={r.id} className="flex flex-wrap items-center justify-between gap-2 p-4">
                   <div>
-                    <p className="text-sm font-medium text-[#002147]">
+                    <p className="text-sm font-medium text-ink">
                       {esAdmin ? `${r.visitante?.nombre} — ${r.vehiculo?.patente}` : r.vehiculo?.patente}
                     </p>
-                    <p className="text-xs text-[#002147]/60">
+                    <p className="text-xs text-ink/60">
                       Cochera {r.cochera?.numero} ({r.cochera?.sector}) · {r.fecha}
                     </p>
                   </div>
