@@ -44,8 +44,20 @@ public class CocheraService implements ICocheraService {
     }
 
     @Override
-    public List<CocheraResponseDto> listar() {
-        return cocheraRepository.findAll().stream().map(this::toResponseDto).toList();
+    public List<CocheraResponseDto> listar(String sector, CocheraTipo tipo, CocheraEstado estado, LocalDate fecha) {
+        List<Cochera> cocheras = cocheraRepository.buscar(blankToNull(sector), tipo, estado);
+
+        if (fecha == null) {
+            return cocheras.stream().map(cochera -> toResponseDto(cochera, null)).toList();
+        }
+
+        Set<UUID> ocupadasEnFecha = reservaRepository.findByFechaAndEstado(fecha, ReservaEstado.CONFIRMADA).stream()
+                .map(reserva -> reserva.getCochera().getId())
+                .collect(Collectors.toSet());
+
+        return cocheras.stream()
+                .map(cochera -> toResponseDto(cochera, !ocupadasEnFecha.contains(cochera.getId())))
+                .toList();
     }
 
     @Override
@@ -96,7 +108,7 @@ public class CocheraService implements ICocheraService {
         return cocheraRepository.findByEstado(CocheraEstado.HABILITADA).stream()
                 .filter(cochera -> !ocupadas.contains(cochera.getId()))
                 .filter(cochera -> esCompatible(cochera.getTipo(), tipoVehiculo))
-                .map(this::toResponseDto)
+                .map(cochera -> toResponseDto(cochera, null))
                 .toList();
     }
 
@@ -104,6 +116,10 @@ public class CocheraService implements ICocheraService {
         List<Reserva> reservas = reservaRepository.findByCocheraIdAndEstado(cocheraId, ReservaEstado.CONFIRMADA);
         reservas.forEach(reserva -> reserva.setEstado(ReservaEstado.CANCELADA));
         reservaRepository.saveAll(reservas);
+    }
+
+    private String blankToNull(String value) {
+        return (value == null || value.isBlank()) ? null : value;
     }
 
     private Cochera buscarOLanzar(UUID id) {
@@ -119,11 +135,16 @@ public class CocheraService implements ICocheraService {
     }
 
     private CocheraResponseDto toResponseDto(Cochera cochera) {
+        return toResponseDto(cochera, null);
+    }
+
+    private CocheraResponseDto toResponseDto(Cochera cochera, Boolean disponibleEnFecha) {
         return new CocheraResponseDto(
                 cochera.getId(),
                 cochera.getNumero(),
                 cochera.getSector(),
                 cochera.getTipo(),
-                cochera.getEstado());
+                cochera.getEstado(),
+                disponibleEnFecha);
     }
 }

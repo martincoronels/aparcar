@@ -27,6 +27,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @UnitTests
@@ -259,5 +260,49 @@ public class CocheraServiceTests {
         cocheraService.editar(cochera.getId(), dto);
 
         assertEquals(ReservaEstado.CANCELADA, reservaConfirmada.getEstado());
+    }
+
+    @Test
+    @DisplayName("listar sin filtros devuelve todas las cocheras con disponibleEnFecha en null")
+    void listarSinFiltrosDevuelveTodasConDisponibleEnFechaNull() {
+        Cochera a01 = cocheraAuto("A-01");
+        when(cocheraRepository.buscar(null, null, null)).thenReturn(List.of(a01));
+
+        var resultado = cocheraService.listar(null, null, null, null);
+
+        assertEquals(1, resultado.size());
+        assertEquals(null, resultado.get(0).disponibleEnFecha());
+    }
+
+    @Test
+    @DisplayName("listar trata un sector en blanco como si no se hubiera pasado filtro")
+    void listarTrataSectorEnBlancoComoNull() {
+        when(cocheraRepository.buscar(null, CocheraTipo.AUTO, null)).thenReturn(List.of());
+
+        cocheraService.listar("   ", CocheraTipo.AUTO, null, null);
+
+        verify(cocheraRepository).buscar(null, CocheraTipo.AUTO, null);
+    }
+
+    @Test
+    @DisplayName("listar con fecha marca disponibleEnFecha=false para una cochera con reserva confirmada ese dia")
+    void listarConFechaMarcaOcupadaCorrectamente() {
+        Cochera libre = cocheraAuto("A-01");
+        Cochera ocupada = cocheraAuto("A-02");
+        LocalDate fecha = LocalDate.now();
+
+        Reserva reserva = new Reserva();
+        reserva.setCochera(ocupada);
+        reserva.setEstado(ReservaEstado.CONFIRMADA);
+
+        when(cocheraRepository.buscar(null, null, null)).thenReturn(List.of(libre, ocupada));
+        when(reservaRepository.findByFechaAndEstado(fecha, ReservaEstado.CONFIRMADA)).thenReturn(List.of(reserva));
+
+        var resultado = cocheraService.listar(null, null, null, fecha);
+
+        var dtoLibre = resultado.stream().filter(c -> c.numero().equals("A-01")).findFirst().orElseThrow();
+        var dtoOcupada = resultado.stream().filter(c -> c.numero().equals("A-02")).findFirst().orElseThrow();
+        assertEquals(true, dtoLibre.disponibleEnFecha());
+        assertEquals(false, dtoOcupada.disponibleEnFecha());
     }
 }

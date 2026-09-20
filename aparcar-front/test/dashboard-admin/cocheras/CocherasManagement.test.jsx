@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 const { getMock, postMock, putMock, deleteMock, toastSuccessMock, toastErrorMock } = vi.hoisted(() => ({
@@ -27,13 +27,25 @@ const cochera = (overrides = {}) => ({
   sector: "Planta Baja",
   tipo: "AUTO",
   estado: "HABILITADA",
+  disponibleEnFecha: null,
   ...overrides,
 });
+
+// El componente pide dos cosas distintas por GET /api/v1/cocheras: una sin
+// params (para el dropdown de sectores, siempre la lista completa) y otra con
+// params (la tabla, filtrada). Este helper simula ambas a la vez.
+function mockCocheras(todasLasCocheras, filtradas = todasLasCocheras) {
+  getMock.mockImplementation((url, config) => {
+    if (url !== "/api/v1/cocheras") return Promise.reject(new Error(`URL no mockeada: ${url}`));
+    const sinParams = !config?.params || Object.keys(config.params).length === 0;
+    return Promise.resolve({ data: sinParams ? todasLasCocheras : filtradas });
+  });
+}
 
 describe("CocherasManagement", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    getMock.mockResolvedValue({ data: [] });
+    mockCocheras([]);
   });
 
   it("muestra la navegación de regreso al panel", () => {
@@ -44,31 +56,54 @@ describe("CocherasManagement", () => {
   });
 
   it("carga y lista las cocheras existentes", async () => {
-    getMock.mockResolvedValue({ data: [cochera(), cochera({ id: "2", numero: "M-01", tipo: "MOTO" })] });
+    mockCocheras([cochera(), cochera({ id: "2", numero: "M-01", tipo: "MOTO" })]);
     render(<CocherasManagement />);
 
     expect(await screen.findByText("A-01")).toBeInTheDocument();
     expect(screen.getByText("M-01")).toBeInTheDocument();
   });
 
-  it("filtra por sector", async () => {
-    getMock.mockResolvedValue({
-      data: [cochera({ sector: "Planta Baja" }), cochera({ id: "2", numero: "A-02", sector: "Subsuelo" })],
-    });
+  it("el dropdown de sector se arma con los sectores reales, sin repetidos", async () => {
+    mockCocheras([
+      cochera({ sector: "Planta Baja" }),
+      cochera({ id: "2", numero: "A-02", sector: "Planta Baja" }),
+      cochera({ id: "3", numero: "S-01", sector: "Subsuelo" }),
+    ]);
+    render(<CocherasManagement />);
+    await screen.findByText("A-01");
+
+    const selectSector = screen.getByDisplayValue("Todos los sectores");
+    const opciones = Array.from(selectSector.querySelectorAll("option")).map((o) => o.textContent);
+    expect(opciones).toEqual(["Todos los sectores", "Planta Baja", "Subsuelo"]);
+  });
+
+  it("filtra por sector pidiendole al backend, no en el cliente", async () => {
+    mockCocheras(
+      [cochera({ sector: "Planta Baja" }), cochera({ id: "2", numero: "A-02", sector: "Subsuelo" })],
+      [cochera({ id: "2", numero: "A-02", sector: "Subsuelo" })]
+    );
     const user = userEvent.setup();
     render(<CocherasManagement />);
     await screen.findByText("A-01");
 
-    await user.type(screen.getByPlaceholderText("Filtrar por sector..."), "subsuelo");
+    const selectSector = screen.getByDisplayValue("Todos los sectores");
+    await user.selectOptions(selectSector, "Subsuelo");
 
+    await waitFor(() =>
+      expect(getMock).toHaveBeenCalledWith(
+        "/api/v1/cocheras",
+        expect.objectContaining({ params: expect.objectContaining({ sector: "Subsuelo" }) })
+      )
+    );
+    expect(await screen.findByText("A-02")).toBeInTheDocument();
     expect(screen.queryByText("A-01")).not.toBeInTheDocument();
-    expect(screen.getByText("A-02")).toBeInTheDocument();
   });
 
-  it("filtra por tipo", async () => {
-    getMock.mockResolvedValue({
-      data: [cochera({ tipo: "AUTO" }), cochera({ id: "2", numero: "M-01", tipo: "MOTO" })],
-    });
+  it("filtra por tipo pidiendole al backend", async () => {
+    mockCocheras(
+      [cochera({ tipo: "AUTO" }), cochera({ id: "2", numero: "M-01", tipo: "MOTO" })],
+      [cochera({ id: "2", numero: "M-01", tipo: "MOTO" })]
+    );
     const user = userEvent.setup();
     render(<CocherasManagement />);
     await screen.findByText("A-01");
@@ -76,11 +111,45 @@ describe("CocherasManagement", () => {
     const [filtroTipoSelect] = screen.getAllByDisplayValue("Todos los tipos");
     await user.selectOptions(filtroTipoSelect, "MOTO");
 
+    await waitFor(() =>
+      expect(getMock).toHaveBeenCalledWith(
+        "/api/v1/cocheras",
+        expect.objectContaining({ params: expect.objectContaining({ tipo: "MOTO" }) })
+      )
+    );
+    expect(await screen.findByText("M-01")).toBeInTheDocument();
     expect(screen.queryByText("A-01")).not.toBeInTheDocument();
-    expect(screen.getByText("M-01")).toBeInTheDocument();
   });
 
-  it("crea una cochera nueva y refresca la lista", async () => {
+  it("sin fecha seleccionada, la columna de disponibilidad muestra un guion", async () => {
+    mockCocheras([cochera({ disponibleEnFecha: null })]);
+    render(<CocherasManagement />);
+
+    await screen.findByText("A-01");
+    expect(screen.getByText("—")).toBeInTheDocument();
+  });
+
+  it("al elegir una fecha, pide al backend con ese parametro y muestra Libre/Ocupada", async () => {
+    mockCocheras(
+      [cochera({ disponibleEnFecha: null })],
+      [cochera({ disponibleEnFecha: false })]
+    );
+    const user = userEvent.setup();
+    render(<CocherasManagement />);
+    await screen.findByText("A-01");
+
+    await user.type(screen.getByLabelText("Filtrar por fecha"), "2026-06-15");
+
+    await waitFor(() =>
+      expect(getMock).toHaveBeenCalledWith(
+        "/api/v1/cocheras",
+        expect.objectContaining({ params: expect.objectContaining({ fecha: "2026-06-15" }) })
+      )
+    );
+    expect(await screen.findByText("Ocupada")).toBeInTheDocument();
+  });
+
+  it("crea una cochera nueva y refresca la lista y los sectores", async () => {
     postMock.mockResolvedValue({ data: cochera() });
     const user = userEvent.setup();
     render(<CocherasManagement />);
@@ -97,8 +166,8 @@ describe("CocherasManagement", () => {
       )
     );
     expect(toastSuccessMock).toHaveBeenCalledWith("Cochera creada correctamente");
-    // Recarga la lista despues de crear.
-    await waitFor(() => expect(getMock).toHaveBeenCalledTimes(2));
+    // Refresca tanto la lista filtrada como el dropdown de sectores (2 llamadas mas).
+    await waitFor(() => expect(getMock.mock.calls.length).toBeGreaterThanOrEqual(3));
   });
 
   it("muestra errores de validacion si falta numero o sector", async () => {
@@ -113,7 +182,7 @@ describe("CocherasManagement", () => {
   });
 
   it("al editar, precarga el formulario con los datos de la fila elegida", async () => {
-    getMock.mockResolvedValue({ data: [cochera({ sector: "Planta Baja" })] });
+    mockCocheras([cochera({ sector: "Planta Baja" })]);
     const user = userEvent.setup();
     render(<CocherasManagement />);
     await screen.findByText("A-01");
@@ -125,7 +194,7 @@ describe("CocherasManagement", () => {
   });
 
   it("al deshabilitar una cochera antes HABILITADA, pide confirmacion; si se cancela, no llama a PUT", async () => {
-    getMock.mockResolvedValue({ data: [cochera()] });
+    mockCocheras([cochera()]);
     vi.spyOn(window, "confirm").mockReturnValue(false);
     const user = userEvent.setup();
     render(<CocherasManagement />);
@@ -141,7 +210,7 @@ describe("CocherasManagement", () => {
   });
 
   it("al deshabilitar y confirmar, llama a PUT con el nuevo estado", async () => {
-    getMock.mockResolvedValue({ data: [cochera()] });
+    mockCocheras([cochera()]);
     putMock.mockResolvedValue({ data: cochera({ estado: "DESHABILITADA" }) });
     vi.spyOn(window, "confirm").mockReturnValue(true);
     const user = userEvent.setup();
@@ -162,7 +231,7 @@ describe("CocherasManagement", () => {
   });
 
   it("eliminar pide confirmacion, y si se cancela no llama a DELETE", async () => {
-    getMock.mockResolvedValue({ data: [cochera()] });
+    mockCocheras([cochera()]);
     vi.spyOn(window, "confirm").mockReturnValue(false);
     const user = userEvent.setup();
     render(<CocherasManagement />);
@@ -175,7 +244,7 @@ describe("CocherasManagement", () => {
   });
 
   it("eliminar, si se confirma, llama a DELETE y refresca la lista", async () => {
-    getMock.mockResolvedValue({ data: [cochera()] });
+    mockCocheras([cochera()]);
     deleteMock.mockResolvedValue({});
     vi.spyOn(window, "confirm").mockReturnValue(true);
     const user = userEvent.setup();

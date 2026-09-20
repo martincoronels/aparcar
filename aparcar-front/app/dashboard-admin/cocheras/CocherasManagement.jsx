@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -41,6 +41,13 @@ export default function CocherasManagement() {
   const [filtroSector, setFiltroSector] = useState("");
   const [filtroTipo, setFiltroTipo] = useState("TODOS");
   const [filtroEstado, setFiltroEstado] = useState("TODOS");
+  const [filtroFecha, setFiltroFecha] = useState("");
+
+  // Sectores reales para el dropdown del filtro. Se piden aparte, sin
+  // filtros, para que la lista no se achique a medida que el usuario filtra
+  // por otra cosa (si la sacara de `cocheras` ya filtradas, un sector se
+  // podria "perder" del dropdown apenas dejara de tener resultados visibles).
+  const [sectoresDisponibles, setSectoresDisponibles] = useState([]);
 
   const {
     register: registerCreate,
@@ -62,11 +69,28 @@ export default function CocherasManagement() {
     defaultValues: { numero: "", sector: "", tipo: "AUTO", estado: "HABILITADA" },
   });
 
+  const cargarSectores = async () => {
+    try {
+      const response = await api.get("/api/v1/cocheras");
+      const distintos = Array.from(new Set(response.data.map((c) => c.sector))).sort();
+      setSectoresDisponibles(distintos);
+    } catch {
+      // No es critico: si falla, el dropdown de sector queda vacio pero el
+      // resto de la pantalla sigue funcionando.
+    }
+  };
+
   const loadCocheras = async () => {
     try {
       setLoadingCocheras(true);
 
-      const response = await api.get("/api/v1/cocheras");
+      const params = {};
+      if (filtroSector.trim()) params.sector = filtroSector.trim();
+      if (filtroTipo !== "TODOS") params.tipo = filtroTipo;
+      if (filtroEstado !== "TODOS") params.estado = filtroEstado;
+      if (filtroFecha) params.fecha = filtroFecha;
+
+      const response = await api.get("/api/v1/cocheras", { params });
 
       setCocheras(response.data);
     } catch (error) {
@@ -79,8 +103,22 @@ export default function CocherasManagement() {
   };
 
   useEffect(() => {
-    loadCocheras();
+    cargarSectores();
   }, []);
+
+  // Debounce de 300ms: cubre tanto el tipeo en el filtro de sector como los
+  // demas filtros, para no disparar un pedido por cada tecla.
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      loadCocheras();
+    }, 300);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filtroSector, filtroTipo, filtroEstado, filtroFecha]);
+
+  const refrescarTodo = async () => {
+    await Promise.all([loadCocheras(), cargarSectores()]);
+  };
 
   const onCreateCochera = async (data) => {
     try {
@@ -90,7 +128,7 @@ export default function CocherasManagement() {
 
       resetCreate();
 
-      await loadCocheras();
+      await refrescarTodo();
     } catch (error) {
       toast.error(
         error.response?.data?.message || "No se pudo crear la cochera."
@@ -140,7 +178,7 @@ export default function CocherasManagement() {
 
       cancelEditing();
 
-      await loadCocheras();
+      await refrescarTodo();
     } catch (error) {
       toast.error(
         error.response?.data?.message || "No se pudo actualizar la cochera."
@@ -166,28 +204,13 @@ export default function CocherasManagement() {
         cancelEditing();
       }
 
-      await loadCocheras();
+      await refrescarTodo();
     } catch (error) {
       toast.error(
         error.response?.data?.message || "No se pudo eliminar la cochera."
       );
     }
   };
-
-  const cocherasFiltradas = useMemo(() => {
-    return cocheras.filter((cochera) => {
-      const coincideSector =
-        filtroSector.trim() === "" ||
-        cochera.sector.toLowerCase().includes(filtroSector.trim().toLowerCase());
-
-      const coincideTipo = filtroTipo === "TODOS" || cochera.tipo === filtroTipo;
-
-      const coincideEstado =
-        filtroEstado === "TODOS" || cochera.estado === filtroEstado;
-
-      return coincideSector && coincideTipo && coincideEstado;
-    });
-  }, [cocheras, filtroSector, filtroTipo, filtroEstado]);
 
   return (
     <div className="min-h-screen bg-bg px-4 py-12 sm:px-6 lg:px-8">
@@ -392,13 +415,19 @@ export default function CocherasManagement() {
                 <h2 className="text-xl font-bold text-ink">Cocheras</h2>
                 <p className="mt-1 text-sm text-ink/60">Cocheras registradas en el predio.</p>
 
-                <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
-                  <input
-                    value={filtroSector}
-                    onChange={(e) => setFiltroSector(e.target.value)}
+                <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-4">
+                  <select
+                    value={filtroSector || "TODOS"}
+                    onChange={(e) => setFiltroSector(e.target.value === "TODOS" ? "" : e.target.value)}
                     className={inputClasses}
-                    placeholder="Filtrar por sector..."
-                  />
+                  >
+                    <option value="TODOS">Todos los sectores</option>
+                    {sectoresDisponibles.map((sector) => (
+                      <option key={sector} value={sector}>
+                        {sector}
+                      </option>
+                    ))}
+                  </select>
 
                   <select
                     value={filtroTipo}
@@ -421,6 +450,25 @@ export default function CocherasManagement() {
                     <option value="HABILITADA">Habilitada</option>
                     <option value="DESHABILITADA">Deshabilitada</option>
                   </select>
+
+                  <div>
+                    <input
+                      type="date"
+                      aria-label="Filtrar por fecha"
+                      value={filtroFecha}
+                      onChange={(e) => setFiltroFecha(e.target.value)}
+                      className={inputClasses}
+                    />
+                    {filtroFecha && (
+                      <button
+                        type="button"
+                        onClick={() => setFiltroFecha("")}
+                        className="mt-1 text-xs font-medium text-accent hover:text-brand"
+                      >
+                        Quitar filtro de fecha
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
 
@@ -428,7 +476,7 @@ export default function CocherasManagement() {
                 <div className="p-8 text-center text-sm text-ink/60">
                   Cargando cocheras...
                 </div>
-              ) : cocherasFiltradas.length === 0 ? (
+              ) : cocheras.length === 0 ? (
                 <div className="p-8 text-center text-sm text-ink/60">
                   No hay cocheras que coincidan con los filtros.
                 </div>
@@ -449,6 +497,9 @@ export default function CocherasManagement() {
                         <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-ink/50">
                           Estado
                         </th>
+                        <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-ink/50">
+                          {filtroFecha ? `Disponibilidad (${filtroFecha})` : "Disponibilidad"}
+                        </th>
                         <th className="px-6 py-3 text-right text-xs font-semibold uppercase tracking-wider text-ink/50">
                           Acciones
                         </th>
@@ -456,7 +507,7 @@ export default function CocherasManagement() {
                     </thead>
 
                     <tbody className="divide-y divide-ink/10">
-                      {cocherasFiltradas.map((cochera) => (
+                      {cocheras.map((cochera) => (
                         <tr key={cochera.id} className="transition-colors hover:bg-accent/5">
                           <td className="whitespace-nowrap px-6 py-4 font-medium text-ink">
                             {cochera.numero}
@@ -481,6 +532,22 @@ export default function CocherasManagement() {
                               <span className="rounded-full bg-ink/5 px-2.5 py-1 text-xs font-medium text-ink/50 ring-1 ring-inset ring-ink/10">
                                 Deshabilitada
                               </span>
+                            )}
+                          </td>
+
+                          <td className="whitespace-nowrap px-6 py-4">
+                            {cochera.disponibleEnFecha === true && (
+                              <span className="rounded-full bg-accent/10 px-2.5 py-1 text-xs font-medium text-accent ring-1 ring-inset ring-accent/20">
+                                Libre
+                              </span>
+                            )}
+                            {cochera.disponibleEnFecha === false && (
+                              <span className="rounded-full bg-red-50 px-2.5 py-1 text-xs font-medium text-red-600 ring-1 ring-inset ring-red-200">
+                                Ocupada
+                              </span>
+                            )}
+                            {(cochera.disponibleEnFecha === null || cochera.disponibleEnFecha === undefined) && (
+                              <span className="text-xs text-ink/40">—</span>
                             )}
                           </td>
 

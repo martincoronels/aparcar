@@ -74,6 +74,15 @@ public class CocheraControllerTests {
         return cocheraRepository.save(cochera);
     }
 
+    private Cochera crearCocheraConSector(String numero, String sector) {
+        Cochera cochera = new Cochera();
+        cochera.setNumero(numero);
+        cochera.setSector(sector);
+        cochera.setTipo(CocheraTipo.AUTO);
+        cochera.setEstado(CocheraEstado.HABILITADA);
+        return cocheraRepository.save(cochera);
+    }
+
     // ---- Seguridad: anónimo ----
 
     @Test
@@ -341,5 +350,87 @@ public class CocheraControllerTests {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(1))
                 .andExpect(jsonPath("$[0].numero").value("M-01"));
+    }
+
+    // ---- Filtros del listado ----
+
+    @Test
+    @WithMockUser(authorities = "ADMIN")
+    @DisplayName("[Caja negra] GET /api/v1/cocheras?tipo filtra por tipo exacto")
+    void listarFiltraPorTipo() throws Exception {
+        crearCochera("A-01", CocheraTipo.AUTO, CocheraEstado.HABILITADA);
+        crearCochera("M-01", CocheraTipo.MOTO, CocheraEstado.HABILITADA);
+        var context = getContext();
+
+        mockMvc.perform(get("/api/v1/cocheras").param("tipo", "MOTO").with(securityContext(context)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].numero").value("M-01"));
+    }
+
+    @Test
+    @WithMockUser(authorities = "ADMIN")
+    @DisplayName("[Caja negra] GET /api/v1/cocheras?sector filtra de forma parcial e insensible a mayusculas")
+    void listarFiltraPorSectorParcial() throws Exception {
+        crearCocheraConSector("A-01", "Planta Baja");
+        crearCocheraConSector("A-02", "Subsuelo");
+        var context = getContext();
+
+        mockMvc.perform(get("/api/v1/cocheras").param("sector", "planta").with(securityContext(context)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].numero").value("A-01"));
+    }
+
+    @Test
+    @WithMockUser(authorities = "ADMIN")
+    @DisplayName("[Caja negra] GET /api/v1/cocheras sin fecha devuelve disponibleEnFecha en null")
+    void listarSinFechaDevuelveDisponibleEnFechaNull() throws Exception {
+        crearCochera("A-01", CocheraTipo.AUTO, CocheraEstado.HABILITADA);
+        var context = getContext();
+
+        mockMvc.perform(get("/api/v1/cocheras").with(securityContext(context)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].disponibleEnFecha").doesNotExist());
+    }
+
+    @Test
+    @WithMockUser(authorities = "ADMIN")
+    @DisplayName("[Caja negra] GET /api/v1/cocheras?fecha marca disponibleEnFecha segun reservas confirmadas")
+    void listarConFechaMarcaDisponibilidad() throws Exception {
+        Cochera libre = crearCochera("A-01", CocheraTipo.AUTO, CocheraEstado.HABILITADA);
+        Cochera ocupada = crearCochera("A-02", CocheraTipo.AUTO, CocheraEstado.HABILITADA);
+
+        Visitante visitante = new Visitante();
+        visitante.setNombre("Juan Perez");
+        visitante.setDocumento("30111222");
+        visitante.setEmail("juan@test.com");
+        visitante.setPassword("hash-irrelevante");
+        visitante.setAuthorities(Set.of(AppAuthority.USER));
+        visitante.setIsActive(true);
+        visitanteRepository.save(visitante);
+
+        Vehiculo vehiculo = new Vehiculo();
+        vehiculo.setPatente("ABC123");
+        vehiculo.setTipo(VehiculoTipo.AUTO);
+        vehiculo.setVisitante(visitante);
+        vehiculoRepository.save(vehiculo);
+
+        Reserva reserva = new Reserva();
+        reserva.setFecha(LocalDate.now());
+        reserva.setVisitante(visitante);
+        reserva.setVehiculo(vehiculo);
+        reserva.setCochera(ocupada);
+        reserva.setEstado(ReservaEstado.CONFIRMADA);
+        reservaRepository.save(reserva);
+
+        var context = getContext();
+
+        mockMvc.perform(get("/api/v1/cocheras")
+                        .param("fecha", LocalDate.now().toString())
+                        .with(securityContext(context)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[?(@.numero == 'A-01')].disponibleEnFecha").value(true))
+                .andExpect(jsonPath("$[?(@.numero == 'A-02')].disponibleEnFecha").value(false));
     }
 }

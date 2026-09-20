@@ -1,40 +1,14 @@
 "use client";
 
-import { useState } from "react";
-
-import ReservasContent from "@/components/ReservasContent";
-import EstadoCocherasGrid from "./EstadoCocherasGrid";
 import VisitantesContent from "./VisitantesContent";
 
 /**
- * Agrupa las tres secciones operativas del dashboard ADMIN.
- *
- * Existe como componente de cliente aparte porque `page.jsx` es un Server
- * Component (hace la validación de rol con requireAuth) y por lo tanto no puede
- * tener estado: sin este intermediario no habría dónde guardar el contador que
- * coordina el refresco entre secciones hermanas.
- *
- * El alta de un visitante ahora también crea una reserva, así que tiene que
- * refrescar tanto la cuadrícula de ocupación como el listado de reservas.
+ * El dashboard ADMIN se dividió en tres pantallas independientes:
+ * cocheras y reservas ahora tienen su propia página (/dashboard-admin/cocheras
+ * y /dashboard-admin/reservas), porque mezclarlas todas acá no escalaba a
+ * medida que crecía la cantidad de cocheras/reservas. Acá solo queda el alta
+ * rápida de visitante, que es la acción del día a día en portería.
  */
 export default function PanelOperativo() {
-  const [ocupacionKey, setOcupacionKey] = useState(0);
-  const [reservasKey, setReservasKey] = useState(0);
-
-  const refrescarTodo = () => {
-    setOcupacionKey((k) => k + 1);
-    setReservasKey((k) => k + 1);
-  };
-
-  return (
-    <>
-      <EstadoCocherasGrid refreshKey={ocupacionKey} />
-      <VisitantesContent onAltaCreada={refrescarTodo} />
-      <ReservasContent
-        modo="admin"
-        refreshKey={reservasKey}
-        onOcupacionCambiada={() => setOcupacionKey((k) => k + 1)}
-      />
-    </>
-  );
+  return <VisitantesContent />;
 }
