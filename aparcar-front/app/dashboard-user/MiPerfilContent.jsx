@@ -6,8 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { toast } from "sonner";
 import api from "@/app/api";
-
-const PATENTE_REGEX = /^([A-Za-z]{3}[0-9]{3}|[A-Za-z]{2}[0-9]{3}[A-Za-z]{2})$/;
+import { formatoPatenteValido, MENSAJE_FORMATO_INVALIDO } from "@/utils/patenteValidation";
 
 const editPerfilSchema = z.object({
   telefono: z.string().optional(),
@@ -28,15 +27,22 @@ const passwordSchema = z
     path: ["passwordRepetida"],
   });
 
-const vehiculoSchema = z.object({
-  patente: z
-    .string()
-    .min(1, "La patente es obligatoria")
-    .regex(PATENTE_REGEX, "Formato inválido (ej: ABC123 o AB123CD)"),
-  tipo: z.enum(["AUTO", "MOTO", "CARGA"], {
-    message: "Selecciona un tipo de vehículo",
-  }),
-});
+const vehiculoSchema = z
+  .object({
+    patente: z.string().min(1, "La patente es obligatoria"),
+    tipo: z.enum(["AUTO", "MOTO", "CARGA"], {
+      message: "Selecciona un tipo de vehículo",
+    }),
+  })
+  .superRefine((data, ctx) => {
+    if (!formatoPatenteValido(data.patente, data.tipo)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["patente"],
+        message: MENSAJE_FORMATO_INVALIDO[data.tipo],
+      });
+    }
+  });
 
 const inputClasses =
   "block w-full rounded-xl border-0 py-3 px-4 text-[#002147] bg-white ring-1 ring-inset ring-[#002147]/20 placeholder:text-[#002147]/40 focus:z-10 focus:ring-2 focus:ring-inset focus:ring-[#0cb7f2] sm:text-sm sm:leading-6 transition-all";

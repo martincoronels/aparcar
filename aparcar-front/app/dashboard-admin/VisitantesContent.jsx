@@ -6,23 +6,29 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { toast } from "sonner";
 import api from "@/app/api";
+import { formatoPatenteValido, MENSAJE_FORMATO_INVALIDO } from "@/utils/patenteValidation";
 
-const PATENTE_REGEX = /^([A-Za-z]{3}[0-9]{3}|[A-Za-z]{2}[0-9]{3}[A-Za-z]{2})$/;
-
-const visitanteSchema = z.object({
-  nombre: z.string().min(1, "El nombre es obligatorio"),
-  documento: z.string().min(1, "El documento es obligatorio"),
-  email: z.string().min(1, "El email es obligatorio").email("Ingresa un correo válido"),
-  telefono: z.string().optional(),
-  patente: z
-    .string()
-    .min(1, "La patente es obligatoria")
-    .regex(PATENTE_REGEX, "Formato inválido (ej: ABC123 o AB123CD)"),
-  tipoVehiculo: z.enum(["AUTO", "MOTO", "CARGA"], {
-    message: "Selecciona un tipo de vehículo",
-  }),
-  cocheraId: z.string().min(1, "Selecciona una cochera"),
-});
+const visitanteSchema = z
+  .object({
+    nombre: z.string().min(1, "El nombre es obligatorio"),
+    documento: z.string().min(1, "El documento es obligatorio"),
+    email: z.string().min(1, "El email es obligatorio").email("Ingresa un correo válido"),
+    telefono: z.string().optional(),
+    patente: z.string().min(1, "La patente es obligatoria"),
+    tipoVehiculo: z.enum(["AUTO", "MOTO", "CARGA"], {
+      message: "Selecciona un tipo de vehículo",
+    }),
+    cocheraId: z.string().min(1, "Selecciona una cochera"),
+  })
+  .superRefine((data, ctx) => {
+    if (!formatoPatenteValido(data.patente, data.tipoVehiculo)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["patente"],
+        message: MENSAJE_FORMATO_INVALIDO[data.tipoVehiculo],
+      });
+    }
+  });
 
 const inputClasses =
   "block w-full rounded-xl border-0 py-3 px-4 text-[#002147] bg-white ring-1 ring-inset ring-[#002147]/20 placeholder:text-[#002147]/40 focus:z-10 focus:ring-2 focus:ring-inset focus:ring-[#0cb7f2] sm:text-sm sm:leading-6 transition-all disabled:opacity-50";

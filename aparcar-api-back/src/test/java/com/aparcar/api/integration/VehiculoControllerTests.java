@@ -272,12 +272,14 @@ public class VehiculoControllerTests {
         Vehiculo vehiculo = crearVehiculo("ABC123", VehiculoTipo.AUTO, dueño);
         var context = getContext();
 
+        // "A123BCD" es un formato Mercosur real de MOTO (antes decia "XYZ999",
+        // que es formato de auto y ahora la validacion por tipo lo rechazaria).
         mockMvc.perform(put("/api/v1/vehiculos/" + vehiculo.getId())
                         .with(securityContext(context))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"patente\":\"XYZ999\",\"tipo\":\"MOTO\"}"))
+                        .content("{\"patente\":\"A123BCD\",\"tipo\":\"MOTO\"}"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.patente").value("XYZ999"));
+                .andExpect(jsonPath("$.patente").value("A123BCD"));
     }
 
     @Test
@@ -290,5 +292,65 @@ public class VehiculoControllerTests {
 
         mockMvc.perform(delete("/api/v1/vehiculos/" + vehiculo.getId()).with(securityContext(context)))
                 .andExpect(status().isNoContent());
+    }
+
+    // ---- Validacion de patente segun tipo ----
+
+    @Test
+    @WithMockUser(authorities = "ADMIN")
+    @DisplayName("[Caja negra] POST /api/v1/vehiculos acepta formato anterior de MOTO (123ABC)")
+    void crearAceptaFormatoAnteriorDeMoto() throws Exception {
+        Visitante visitante = crearVisitante("30111222");
+        var context = getContext();
+
+        mockMvc.perform(post("/api/v1/vehiculos")
+                        .with(securityContext(context))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"patente\":\"123abc\",\"tipo\":\"MOTO\",\"visitanteId\":\"" + visitante.getId() + "\"}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.patente").value("123ABC"));
+    }
+
+    @Test
+    @WithMockUser(authorities = "ADMIN")
+    @DisplayName("[Caja negra] POST /api/v1/vehiculos acepta formato Mercosur de MOTO (A123BCD)")
+    void crearAceptaFormatoMercosurDeMoto() throws Exception {
+        Visitante visitante = crearVisitante("30111222");
+        var context = getContext();
+
+        mockMvc.perform(post("/api/v1/vehiculos")
+                        .with(securityContext(context))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"patente\":\"a123bcd\",\"tipo\":\"MOTO\",\"visitanteId\":\"" + visitante.getId() + "\"}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.patente").value("A123BCD"));
+    }
+
+    @Test
+    @WithMockUser(authorities = "ADMIN")
+    @DisplayName("[Caja negra] POST /api/v1/vehiculos devuelve 400 si la patente tiene formato de auto para una MOTO")
+    void crearDevuelve400SiPatenteEsDeAutoParaMoto() throws Exception {
+        Visitante visitante = crearVisitante("30111222");
+        var context = getContext();
+
+        mockMvc.perform(post("/api/v1/vehiculos")
+                        .with(securityContext(context))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"patente\":\"ABC123\",\"tipo\":\"MOTO\",\"visitanteId\":\"" + visitante.getId() + "\"}"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @WithMockUser(authorities = "ADMIN")
+    @DisplayName("[Caja negra] POST /api/v1/vehiculos devuelve 400 si la patente tiene formato de moto para un AUTO")
+    void crearDevuelve400SiPatenteEsDeMotoParaAuto() throws Exception {
+        Visitante visitante = crearVisitante("30111222");
+        var context = getContext();
+
+        mockMvc.perform(post("/api/v1/vehiculos")
+                        .with(securityContext(context))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"patente\":\"123ABC\",\"tipo\":\"AUTO\",\"visitanteId\":\"" + visitante.getId() + "\"}"))
+                .andExpect(status().isBadRequest());
     }
 }

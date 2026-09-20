@@ -1,26 +1,43 @@
 @import "tailwindcss";
 
+/* Variante dark: controlada por una clase (.dark en <html>), no solo por el
+   prefers-color-scheme del sistema — necesario para un toggle manual en
+   Tailwind v4 (no hay tailwind.config.js con darkMode: 'class' acá). */
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Fondo de página y superficies (tarjetas, headers) */
+  --color-bg: #ffffff;
+  --color-surface: #ffffff;
+
+  /* Texto/bordes: se invierten en modo oscuro */
+  --color-ink: #002147;
+
+  /* Acento de marca (cyan): mismo rol en los dos temas, un poco más claro
+     en oscuro para mantener contraste sobre fondos oscuros */
+  --color-accent: #0cb7f2;
+
+  /* Navy de marca como relleno sólido fijo (botones, insignias, círculos
+     decorativos): NO se invierte, es un color de marca, no texto adaptable */
+  --color-brand: #002147;
+}
+
+.dark {
+  --color-bg: #0b1220;
+  --color-surface: #111a2e;
+  --color-ink: #e7ecf5;
+  --color-accent: #38c6ff;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --color-bg: var(--color-bg);
+  --color-surface: var(--color-surface);
+  --color-ink: var(--color-ink);
+  --color-accent: var(--color-accent);
+  --color-brand: var(--color-brand);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background-color: var(--color-bg);
+  color: var(--color-ink);
 }
