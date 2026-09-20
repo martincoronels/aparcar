@@ -31,8 +31,8 @@ const visitanteSchema = z
   });
 
 const inputClasses =
-  "block w-full rounded-xl border-0 py-3 px-4 text-[#002147] bg-white ring-1 ring-inset ring-[#002147]/20 placeholder:text-[#002147]/40 focus:z-10 focus:ring-2 focus:ring-inset focus:ring-[#0cb7f2] sm:text-sm sm:leading-6 transition-all disabled:opacity-50";
-const labelClasses = "block text-sm font-medium text-[#002147]/70 mb-1";
+  "block w-full rounded-xl border-0 py-3 px-4 text-ink bg-surface ring-1 ring-inset ring-ink/20 placeholder:text-ink/40 focus:z-10 focus:ring-2 focus:ring-inset focus:ring-accent sm:text-sm sm:leading-6 transition-all disabled:opacity-50";
+const labelClasses = "block text-sm font-medium text-ink/70 mb-1";
 const hoy = () => new Date().toISOString().split("T")[0];
 
 // Da de alta un visitante y lo deja estacionado en el momento: crea la cuenta,
@@ -100,18 +100,18 @@ export default function VisitantesContent({ onAltaCreada }) {
 
   return (
     <div className="mx-auto max-w-2xl">
-      <h1 className="text-3xl font-extrabold tracking-tight text-[#002147] mb-2">
+      <h1 className="text-3xl font-extrabold tracking-tight text-ink mb-2">
         Nuevo visitante
       </h1>
-      <p className="text-sm text-[#002147]/60 mb-8">
+      <p className="text-sm text-ink/60 mb-8">
         Cargá sus datos y su vehículo, y elegí la cochera que ocupa hoy. Queda con
         cuenta creada y su documento como contraseña inicial.
       </p>
 
-      <div className="rounded-2xl bg-white p-8 shadow-xl shadow-[#002147]/10 ring-1 ring-[#002147]/15">
+      <div className="rounded-2xl bg-surface p-8 shadow-xl shadow-ink/10 ring-1 ring-ink/15">
         <form className="space-y-6" onSubmit={handleSubmit(onSubmit)}>
             <div>
-              <h2 className="text-sm font-semibold text-[#0cb7f2] uppercase tracking-wide mb-4">
+              <h2 className="text-sm font-semibold text-accent uppercase tracking-wide mb-4">
                 Datos del visitante
               </h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -138,7 +138,7 @@ export default function VisitantesContent({ onAltaCreada }) {
             </div>
 
             <div>
-              <h2 className="text-sm font-semibold text-[#0cb7f2] uppercase tracking-wide mb-4">
+              <h2 className="text-sm font-semibold text-accent uppercase tracking-wide mb-4">
                 Vehículo y cochera
               </h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -173,7 +173,7 @@ export default function VisitantesContent({ onAltaCreada }) {
                   </select>
                   {errors.cocheraId && <p className="mt-1 text-sm text-red-500">{errors.cocheraId.message}</p>}
                   {cocheras.length === 0 && (
-                    <p className="mt-1 text-sm text-[#002147]/50">
+                    <p className="mt-1 text-sm text-ink/50">
                       No hay cocheras disponibles hoy para ese tipo de vehículo.
                     </p>
                   )}
@@ -185,7 +185,7 @@ export default function VisitantesContent({ onAltaCreada }) {
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="group relative flex w-full justify-center rounded-xl bg-[#0cb7f2] px-3 py-3 text-sm font-semibold text-white hover:bg-[#002147] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0cb7f2] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                className="group relative flex w-full justify-center rounded-xl bg-accent px-3 py-3 text-sm font-semibold text-white hover:bg-brand focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isSubmitting ? "Guardando..." : "Dar de alta y reservar"}
               </button>

@@ -213,7 +213,7 @@ export default function Home() {
           </div>
         </section>
 
-        <section id="servicio" className="bg-ink/[0.03] py-20">
+        <section id="servicio" className="bg-ink/3 py-20">
           <div className="mx-auto max-w-6xl px-4 sm:px-6">
             <h2 className="text-center text-3xl font-extrabold tracking-tight text-ink">
               Todo lo que necesita tu predio

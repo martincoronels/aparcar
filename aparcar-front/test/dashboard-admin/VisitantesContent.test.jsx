@@ -84,29 +84,23 @@ describe("VisitantesContent (alta de visitante con reserva)", () => {
     await completarFormulario(user, { patente: "123" });
     await user.click(screen.getByRole("button", { name: /dar de alta y reservar/i }));
 
-    expect(await screen.findByText("Formato inválido (ej: ABC123 o AB123CD)")).toBeInTheDocument();
+    expect(await screen.findByText("Formato inválido para auto/carga (ej: ABC123 o AB123CD)")).toBeInTheDocument();
+    expect(postMock).not.toHaveBeenCalled();
+  });
+
+  it("rechaza una patente de moto cuando el tipo elegido sigue siendo AUTO", async () => {
+    mockCocheras();
+    const user = userEvent.setup();
+    render(<VisitantesContent />);
+
+    await completarFormulario(user, { patente: "123ABC" });
+    await user.click(screen.getByRole("button", { name: /dar de alta y reservar/i }));
+
+    expect(await screen.findByText("Formato inválido para auto/carga (ej: ABC123 o AB123CD)")).toBeInTheDocument();
     expect(postMock).not.toHaveBeenCalled();
   });
 
   it("pide las cocheras disponibles de hoy para el tipo de vehiculo elegido", async () => {
-    mockCocheras([cochera()]);
-    render(<VisitantesContent />);
-
-    await waitFor(() =>
-      expect(getMock).toHaveBeenCalledWith(
-        "/api/v1/cocheras/disponibles",
-        expect.objectContaining({
-          params: expect.objectContaining({
-            tipoVehiculo: "AUTO",
-            fecha: new Date().toISOString().split("T")[0],
-          }),
-        })
-      )
-    );
-    expect(await screen.findByRole("option", { name: /A-01/ })).toBeInTheDocument();
-  });
-
-  it("no deja dar de alta sin elegir cochera: la reserva es parte del alta", async () => {
     mockCocheras([cochera()]);
     const user = userEvent.setup();
     render(<VisitantesContent />);

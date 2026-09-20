@@ -115,40 +115,40 @@ export default function EstadoCocherasGrid({ refreshKey = 0 }) {
     .filter((columna) => columna.cocheras.length > 0);
 
   return (
-    <div className="rounded-2xl bg-white p-6 shadow-xl shadow-[#002147]/10 ring-1 ring-[#002147]/15">
+    <div className="rounded-2xl bg-surface p-6 shadow-xl shadow-ink/10 ring-1 ring-ink/15">
       <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h2 className="text-xl font-bold text-[#002147]">Estado de las cocheras</h2>
-          <p className="mt-1 text-sm text-[#002147]/60">Ocupación de hoy, agrupada por tipo.</p>
+          <h2 className="text-xl font-bold text-ink">Estado de las cocheras</h2>
+          <p className="mt-1 text-sm text-ink/60">Ocupación de hoy, agrupada por tipo.</p>
         </div>
 
-        <div className="flex items-center gap-4 text-xs text-[#002147]/60">
+        <div className="flex items-center gap-4 text-xs text-ink/60">
           <span className="flex items-center gap-1.5">
-            <span className="h-3 w-3 rounded-sm border border-[#002147]/30 bg-white" /> Libre
+            <span className="h-3 w-3 rounded-sm border border-ink/30 bg-surface" /> Libre
           </span>
           <span className="flex items-center gap-1.5">
-            <span className="h-3 w-3 rounded-sm bg-[#0cb7f2]" /> Ocupada
+            <span className="h-3 w-3 rounded-sm bg-accent" /> Ocupada
           </span>
           <span className="flex items-center gap-1.5">
-            <span className="h-3 w-3 rounded-sm bg-[#002147]/20" /> Deshabilitada
+            <span className="h-3 w-3 rounded-sm bg-ink/20" /> Deshabilitada
           </span>
         </div>
       </div>
 
       {loading ? (
-        <div className="p-8 text-center text-sm text-[#002147]/60">Cargando cocheras...</div>
+        <div className="p-8 text-center text-sm text-ink/60">Cargando cocheras...</div>
       ) : columnas.length === 0 ? (
-        <div className="p-8 text-center text-sm text-[#002147]/60">Todavía no hay cocheras cargadas.</div>
+        <div className="p-8 text-center text-sm text-ink/60">Todavía no hay cocheras cargadas.</div>
       ) : (
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-3">
           {columnas.map(({ tipo, label, Icon, cocheras: cocherasTipo }) => {
             const ocupadasCount = cocherasTipo.filter((c) => ocupadasIds.has(c.id)).length;
 
             return (
-              <div key={tipo} className="rounded-xl bg-[#002147]/5 p-4 ring-1 ring-[#002147]/10">
+              <div key={tipo} className="rounded-xl bg-ink/5 p-4 ring-1 ring-ink/10">
                 <div className="mb-3 flex items-center justify-between">
-                  <h3 className="text-sm font-semibold text-[#002147]">{label}</h3>
-                  <span className="text-xs text-[#002147]/50">
+                  <h3 className="text-sm font-semibold text-ink">{label}</h3>
+                  <span className="text-xs text-ink/50">
                     {ocupadasCount}/{cocherasTipo.length} ocupadas
                   </span>
                 </div>
@@ -167,20 +167,20 @@ export default function EstadoCocherasGrid({ refreshKey = 0 }) {
                         className={
                           "flex h-12 w-12 items-center justify-center rounded-md border transition-colors " +
                           (deshabilitada
-                            ? "border-[#002147]/15 bg-[#002147]/10"
+                            ? "border-ink/15 bg-ink/10"
                             : ocupada
-                            ? "border-[#0cb7f2] bg-[#0cb7f2]"
-                            : "border-[#002147]/25 bg-white")
+                            ? "border-accent bg-accent"
+                            : "border-ink/25 bg-surface")
                         }
                       >
                         <Icon
                           className={
                             "h-6 w-6 " +
                             (deshabilitada
-                              ? "text-[#002147]/30"
+                              ? "text-ink/30"
                               : ocupada
                               ? "text-white"
-                              : "text-[#002147]/50")
+                              : "text-ink/50")
                           }
                         />
                       </div>

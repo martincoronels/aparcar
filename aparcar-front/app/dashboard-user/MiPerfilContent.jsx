@@ -6,6 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { toast } from "sonner";
 import api from "@/app/api";
+
 import { formatoPatenteValido, MENSAJE_FORMATO_INVALIDO } from "@/utils/patenteValidation";
 
 const editPerfilSchema = z.object({
@@ -45,8 +46,8 @@ const vehiculoSchema = z
   });
 
 const inputClasses =
-  "block w-full rounded-xl border-0 py-3 px-4 text-[#002147] bg-white ring-1 ring-inset ring-[#002147]/20 placeholder:text-[#002147]/40 focus:z-10 focus:ring-2 focus:ring-inset focus:ring-[#0cb7f2] sm:text-sm sm:leading-6 transition-all";
-const labelClasses = "block text-sm font-medium text-[#002147]/70 mb-1";
+  "block w-full rounded-xl border-0 py-3 px-4 text-ink bg-surface ring-1 ring-inset ring-ink/20 placeholder:text-ink/40 focus:z-10 focus:ring-2 focus:ring-inset focus:ring-accent sm:text-sm sm:leading-6 transition-all";
+const labelClasses = "block text-sm font-medium text-ink/70 mb-1";
 
 // Ya no existe el paso de "cargá tus datos": la cuenta y el visitante son la
 // misma entidad, así que nombre y documento vienen dados desde el alta y acá
@@ -178,12 +179,12 @@ export default function MiPerfilContent({ onVehiculosCambiaron }) {
   };
 
   if (loading) {
-    return <div className="text-center text-sm text-[#002147]/60 p-8">Cargando tus datos...</div>;
+    return <div className="text-center text-sm text-ink/60 p-8">Cargando tus datos...</div>;
   }
 
   if (!visitante) {
     return (
-      <div className="text-center text-sm text-[#002147]/60 p-8">
+      <div className="text-center text-sm text-ink/60 p-8">
         No se pudieron cargar tus datos.
       </div>
     );
@@ -191,15 +192,15 @@ export default function MiPerfilContent({ onVehiculosCambiaron }) {
 
   return (
     <div className="mx-auto max-w-2xl">
-      <h1 className="text-3xl font-extrabold tracking-tight text-[#002147] mb-2">Mis datos</h1>
-      <p className="text-sm text-[#002147]/60 mb-8">Tus datos y vehículos registrados.</p>
+      <h1 className="text-3xl font-extrabold tracking-tight text-ink mb-2">Mis datos</h1>
+      <p className="text-sm text-ink/60 mb-8">Tus datos y vehículos registrados.</p>
 
       <div className="space-y-8">
-        <div className="rounded-2xl bg-white p-6 shadow-xl shadow-[#002147]/10 ring-1 ring-[#002147]/15">
+        <div className="rounded-2xl bg-surface p-6 shadow-xl shadow-ink/10 ring-1 ring-ink/15">
           <div className="flex items-start justify-between gap-4">
             <div>
-              <h2 className="text-lg font-bold text-[#002147]">{visitante.nombre}</h2>
-              <p className="text-sm text-[#002147]/60">
+              <h2 className="text-lg font-bold text-ink">{visitante.nombre}</h2>
+              <p className="text-sm text-ink/60">
                 Documento {visitante.documento}
                 {visitante.telefono ? ` · ${visitante.telefono}` : ""}
                 {visitante.email ? ` · ${visitante.email}` : ""}
@@ -211,7 +212,7 @@ export default function MiPerfilContent({ onVehiculosCambiaron }) {
                 <button
                   type="button"
                   onClick={startEditandoPerfil}
-                  className="rounded-lg border border-[#002147]/20 px-3 py-2 text-xs font-semibold text-[#002147] hover:bg-[#002147]/5 transition-colors"
+                  className="rounded-lg border border-ink/20 px-3 py-2 text-xs font-semibold text-ink hover:bg-ink/5 transition-colors"
                 >
                   Editar mis datos
                 </button>
@@ -220,7 +221,7 @@ export default function MiPerfilContent({ onVehiculosCambiaron }) {
                 <button
                   type="button"
                   onClick={startCambiandoPassword}
-                  className="rounded-lg border border-[#002147]/20 px-3 py-2 text-xs font-semibold text-[#002147] hover:bg-[#002147]/5 transition-colors"
+                  className="rounded-lg border border-ink/20 px-3 py-2 text-xs font-semibold text-ink hover:bg-ink/5 transition-colors"
                 >
                   Cambiar contraseña
                 </button>
@@ -243,7 +244,7 @@ export default function MiPerfilContent({ onVehiculosCambiaron }) {
                 {editPerfilForm.formState.errors.email && (
                   <p className="mt-1 text-sm text-red-500">{editPerfilForm.formState.errors.email.message}</p>
                 )}
-                <p className="mt-1 text-xs text-[#002147]/50">
+                <p className="mt-1 text-xs text-ink/50">
                   Es con lo que iniciás sesión: si lo cambiás, entrás con el nuevo.
                 </p>
               </div>
@@ -251,14 +252,14 @@ export default function MiPerfilContent({ onVehiculosCambiaron }) {
                 <button
                   type="submit"
                   disabled={editPerfilForm.formState.isSubmitting}
-                  className="rounded-xl bg-[#0cb7f2] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#002147] transition-all disabled:opacity-50"
+                  className="rounded-xl bg-accent px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand transition-all disabled:opacity-50"
                 >
                   Guardar cambios
                 </button>
                 <button
                   type="button"
                   onClick={() => setEditandoPerfil(false)}
-                  className="rounded-xl px-4 py-2.5 text-sm font-medium text-[#002147]/70 hover:bg-[#002147]/5 transition-colors"
+                  className="rounded-xl px-4 py-2.5 text-sm font-medium text-ink/70 hover:bg-ink/5 transition-colors"
                 >
                   Cancelar
                 </button>
@@ -285,7 +286,7 @@ export default function MiPerfilContent({ onVehiculosCambiaron }) {
                     {passwordForm.formState.errors.passwordActual.message}
                   </p>
                 )}
-                <p className="mt-1 text-xs text-[#002147]/50">
+                <p className="mt-1 text-xs text-ink/50">
                   Si tu cuenta la creó un administrador, tu contraseña actual es tu documento.
                 </p>
               </div>
@@ -324,14 +325,14 @@ export default function MiPerfilContent({ onVehiculosCambiaron }) {
                 <button
                   type="submit"
                   disabled={passwordForm.formState.isSubmitting}
-                  className="rounded-xl bg-[#0cb7f2] px-4 py-2.5 text-sm font-semibold text-white hover:bg-[#002147] transition-all disabled:opacity-50"
+                  className="rounded-xl bg-accent px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand transition-all disabled:opacity-50"
                 >
                   Guardar contraseña
                 </button>
                 <button
                   type="button"
                   onClick={() => setCambiandoPassword(false)}
-                  className="rounded-xl px-4 py-2.5 text-sm font-medium text-[#002147]/70 hover:bg-[#002147]/5 transition-colors"
+                  className="rounded-xl px-4 py-2.5 text-sm font-medium text-ink/70 hover:bg-ink/5 transition-colors"
                 >
                   Cancelar
                 </button>
@@ -340,13 +341,13 @@ export default function MiPerfilContent({ onVehiculosCambiaron }) {
           )}
         </div>
 
-        <div className="rounded-2xl bg-white p-6 shadow-xl shadow-[#002147]/10 ring-1 ring-[#002147]/15">
-          <h2 className="text-lg font-bold text-[#002147] mb-4">Mis vehículos</h2>
+        <div className="rounded-2xl bg-surface p-6 shadow-xl shadow-ink/10 ring-1 ring-ink/15">
+          <h2 className="text-lg font-bold text-ink mb-4">Mis vehículos</h2>
 
           {vehiculos.length === 0 ? (
-            <p className="text-sm text-[#002147]/60 mb-4">Todavía no cargaste ningún vehículo.</p>
+            <p className="text-sm text-ink/60 mb-4">Todavía no cargaste ningún vehículo.</p>
           ) : (
-            <ul className="mb-4 divide-y divide-[#002147]/10">
+            <ul className="mb-4 divide-y divide-ink/10">
               {vehiculos.map((v) =>
                 editandoVehiculoId === v.id ? (
                   <li key={v.id} className="py-3">
@@ -372,14 +373,14 @@ export default function MiPerfilContent({ onVehiculosCambiaron }) {
                       </select>
                       <button
                         type="submit"
-                        className="rounded-xl bg-[#0cb7f2] px-4 py-3 text-sm font-semibold text-white hover:bg-[#002147] transition-all"
+                        className="rounded-xl bg-accent px-4 py-3 text-sm font-semibold text-white hover:bg-brand transition-all"
                       >
                         Guardar
                       </button>
                       <button
                         type="button"
                         onClick={() => setEditandoVehiculoId(null)}
-                        className="rounded-xl px-4 py-3 text-sm font-medium text-[#002147]/70 hover:bg-[#002147]/5 transition-colors"
+                        className="rounded-xl px-4 py-3 text-sm font-medium text-ink/70 hover:bg-ink/5 transition-colors"
                       >
                         Cancelar
                       </button>
@@ -387,13 +388,13 @@ export default function MiPerfilContent({ onVehiculosCambiaron }) {
                   </li>
                 ) : (
                   <li key={v.id} className="py-2 flex items-center justify-between text-sm">
-                    <span className="font-medium text-[#002147]">{v.patente}</span>
-                    <span className="text-[#002147]/60">{v.tipo}</span>
+                    <span className="font-medium text-ink">{v.patente}</span>
+                    <span className="text-ink/60">{v.tipo}</span>
                     <div className="flex gap-2">
                       <button
                         type="button"
                         onClick={() => startEditandoVehiculo(v)}
-                        className="rounded-lg border border-[#002147]/20 px-2.5 py-1 text-xs font-semibold text-[#002147] hover:bg-[#002147]/5 transition-colors"
+                        className="rounded-lg border border-ink/20 px-2.5 py-1 text-xs font-semibold text-ink hover:bg-ink/5 transition-colors"
                       >
                         Editar
                       </button>
@@ -433,7 +434,7 @@ export default function MiPerfilContent({ onVehiculosCambiaron }) {
             <button
               type="submit"
               disabled={vehiculoForm.formState.isSubmitting}
-              className="rounded-xl bg-[#0cb7f2] px-4 py-3 text-sm font-semibold text-white hover:bg-[#002147] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              className="rounded-xl bg-accent px-4 py-3 text-sm font-semibold text-white hover:bg-brand transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Agregar
             </button>

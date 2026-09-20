@@ -22,9 +22,9 @@ const cocheraSchema = z.object({
 });
 
 const inputClasses =
-  "block w-full rounded-xl border-0 py-3 px-4 text-[#002147] bg-white ring-1 ring-inset ring-[#002147]/20 placeholder:text-[#002147]/40 focus:z-10 focus:ring-2 focus:ring-inset focus:ring-[#0cb7f2] sm:text-sm sm:leading-6 transition-all";
+  "block w-full rounded-xl border-0 py-3 px-4 text-ink bg-surface ring-1 ring-inset ring-ink/20 placeholder:text-ink/40 focus:z-10 focus:ring-2 focus:ring-inset focus:ring-accent sm:text-sm sm:leading-6 transition-all";
 
-const labelClasses = "block text-sm font-medium text-[#002147]/70 mb-1";
+const labelClasses = "block text-sm font-medium text-ink/70 mb-1";
 
 const TIPO_LABELS = {
   AUTO: "Auto",
@@ -190,12 +190,12 @@ export default function CocherasManagement() {
   }, [cocheras, filtroSector, filtroTipo, filtroEstado]);
 
   return (
-    <div className="min-h-screen bg-white px-4 py-12 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-bg px-4 py-12 sm:px-6 lg:px-8">
       <div className="mx-auto max-w-7xl">
         <div className="mb-8 flex flex-wrap items-center justify-between gap-3">
           <Link
             href="/dashboard-admin"
-            className="rounded-xl bg-white px-4 py-2 text-sm font-semibold text-[#002147] ring-1 ring-inset ring-[#002147]/20 transition-colors hover:bg-[#002147]/5"
+            className="rounded-xl bg-surface px-4 py-2 text-sm font-semibold text-ink ring-1 ring-inset ring-ink/20 transition-colors hover:bg-ink/5"
           >
             ← Volver al panel
           </Link>
@@ -203,21 +203,21 @@ export default function CocherasManagement() {
         </div>
 
         <div className="mb-8">
-          <h1 className="text-3xl font-extrabold tracking-tight text-[#002147]">
+          <h1 className="text-3xl font-extrabold tracking-tight text-ink">
             Gestión de cocheras
           </h1>
 
-          <p className="mt-2 text-sm text-[#002147]/60">
+          <p className="mt-2 text-sm text-ink/60">
             Administrá las cocheras del predio: número, sector, tipo y estado.
           </p>
         </div>
 
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
           <div className="lg:col-span-1">
-            <div className="rounded-2xl bg-white p-6 shadow-xl shadow-[#002147]/10 ring-1 ring-[#002147]/15">
-              <h2 className="text-xl font-bold text-[#002147]">Nueva cochera</h2>
+            <div className="rounded-2xl bg-surface p-6 shadow-xl shadow-ink/10 ring-1 ring-ink/15">
+              <h2 className="text-xl font-bold text-ink">Nueva cochera</h2>
 
-              <p className="mt-1 mb-6 text-sm text-[#002147]/60">
+              <p className="mt-1 mb-6 text-sm text-ink/60">
                 Cargá una cochera nueva en el predio.
               </p>
 
@@ -299,7 +299,7 @@ export default function CocherasManagement() {
                 <button
                   type="submit"
                   disabled={isCreating}
-                  className="flex w-full justify-center rounded-xl bg-[#0cb7f2] px-3 py-3 text-sm font-semibold text-white transition-all hover:bg-[#002147] disabled:cursor-not-allowed disabled:opacity-50"
+                  className="flex w-full justify-center rounded-xl bg-accent px-3 py-3 text-sm font-semibold text-white transition-all hover:bg-brand disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {isCreating ? "Creando..." : "Crear cochera"}
                 </button>
@@ -309,17 +309,17 @@ export default function CocherasManagement() {
 
           <div className="lg:col-span-2">
             {editingCochera && (
-              <div className="mb-8 rounded-2xl bg-white p-6 shadow-xl shadow-[#002147]/10 ring-1 ring-[#002147]/15">
+              <div className="mb-8 rounded-2xl bg-surface p-6 shadow-xl shadow-ink/10 ring-1 ring-ink/15">
                 <div className="mb-6 flex items-start justify-between gap-4">
                   <div>
-                    <h2 className="text-xl font-bold text-[#002147]">Editar cochera</h2>
-                    <p className="mt-1 text-sm text-[#002147]/60">{editingCochera.numero}</p>
+                    <h2 className="text-xl font-bold text-ink">Editar cochera</h2>
+                    <p className="mt-1 text-sm text-ink/60">{editingCochera.numero}</p>
                   </div>
 
                   <button
                     type="button"
                     onClick={cancelEditing}
-                    className="rounded-lg px-3 py-2 text-sm font-medium text-[#002147]/60 transition-colors hover:bg-[#002147]/5 hover:text-[#002147]"
+                    className="rounded-lg px-3 py-2 text-sm font-medium text-ink/60 transition-colors hover:bg-ink/5 hover:text-ink"
                   >
                     Cancelar
                   </button>
@@ -379,7 +379,7 @@ export default function CocherasManagement() {
                   <button
                     type="submit"
                     disabled={isEditing}
-                    className="rounded-xl bg-[#0cb7f2] px-5 py-3 text-sm font-semibold text-white transition-all hover:bg-[#002147] disabled:cursor-not-allowed disabled:opacity-50"
+                    className="rounded-xl bg-accent px-5 py-3 text-sm font-semibold text-white transition-all hover:bg-brand disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {isEditing ? "Guardando..." : "Guardar cambios"}
                   </button>
@@ -387,10 +387,10 @@ export default function CocherasManagement() {
               </div>
             )}
 
-            <div className="overflow-hidden rounded-2xl bg-white shadow-xl shadow-[#002147]/10 ring-1 ring-[#002147]/15">
-              <div className="border-b border-[#002147]/10 px-6 py-5">
-                <h2 className="text-xl font-bold text-[#002147]">Cocheras</h2>
-                <p className="mt-1 text-sm text-[#002147]/60">Cocheras registradas en el predio.</p>
+            <div className="overflow-hidden rounded-2xl bg-surface shadow-xl shadow-ink/10 ring-1 ring-ink/15">
+              <div className="border-b border-ink/10 px-6 py-5">
+                <h2 className="text-xl font-bold text-ink">Cocheras</h2>
+                <p className="mt-1 text-sm text-ink/60">Cocheras registradas en el predio.</p>
 
                 <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
                   <input
@@ -425,60 +425,60 @@ export default function CocherasManagement() {
               </div>
 
               {loadingCocheras ? (
-                <div className="p-8 text-center text-sm text-[#002147]/60">
+                <div className="p-8 text-center text-sm text-ink/60">
                   Cargando cocheras...
                 </div>
               ) : cocherasFiltradas.length === 0 ? (
-                <div className="p-8 text-center text-sm text-[#002147]/60">
+                <div className="p-8 text-center text-sm text-ink/60">
                   No hay cocheras que coincidan con los filtros.
                 </div>
               ) : (
                 <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-[#002147]/10">
-                    <thead className="bg-white">
+                  <table className="min-w-full divide-y divide-ink/10">
+                    <thead className="bg-surface">
                       <tr>
-                        <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[#002147]/50">
+                        <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-ink/50">
                           Número
                         </th>
-                        <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[#002147]/50">
+                        <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-ink/50">
                           Sector
                         </th>
-                        <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[#002147]/50">
+                        <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-ink/50">
                           Tipo
                         </th>
-                        <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[#002147]/50">
+                        <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-ink/50">
                           Estado
                         </th>
-                        <th className="px-6 py-3 text-right text-xs font-semibold uppercase tracking-wider text-[#002147]/50">
+                        <th className="px-6 py-3 text-right text-xs font-semibold uppercase tracking-wider text-ink/50">
                           Acciones
                         </th>
                       </tr>
                     </thead>
 
-                    <tbody className="divide-y divide-[#002147]/10">
+                    <tbody className="divide-y divide-ink/10">
                       {cocherasFiltradas.map((cochera) => (
-                        <tr key={cochera.id} className="transition-colors hover:bg-[#0cb7f2]/5">
-                          <td className="whitespace-nowrap px-6 py-4 font-medium text-[#002147]">
+                        <tr key={cochera.id} className="transition-colors hover:bg-accent/5">
+                          <td className="whitespace-nowrap px-6 py-4 font-medium text-ink">
                             {cochera.numero}
                           </td>
 
-                          <td className="whitespace-nowrap px-6 py-4 text-sm text-[#002147]/70">
+                          <td className="whitespace-nowrap px-6 py-4 text-sm text-ink/70">
                             {cochera.sector}
                           </td>
 
                           <td className="whitespace-nowrap px-6 py-4">
-                            <span className="rounded-full bg-[#0cb7f2]/10 px-2.5 py-1 text-xs font-medium text-[#0cb7f2] ring-1 ring-inset ring-[#0cb7f2]/20">
+                            <span className="rounded-full bg-accent/10 px-2.5 py-1 text-xs font-medium text-accent ring-1 ring-inset ring-accent/20">
                               {TIPO_LABELS[cochera.tipo]}
                             </span>
                           </td>
 
                           <td className="whitespace-nowrap px-6 py-4">
                             {cochera.estado === "HABILITADA" ? (
-                              <span className="rounded-full bg-[#0cb7f2]/10 px-2.5 py-1 text-xs font-medium text-[#0cb7f2] ring-1 ring-inset ring-[#0cb7f2]/20">
+                              <span className="rounded-full bg-accent/10 px-2.5 py-1 text-xs font-medium text-accent ring-1 ring-inset ring-accent/20">
                                 Habilitada
                               </span>
                             ) : (
-                              <span className="rounded-full bg-[#002147]/5 px-2.5 py-1 text-xs font-medium text-[#002147]/50 ring-1 ring-inset ring-[#002147]/10">
+                              <span className="rounded-full bg-ink/5 px-2.5 py-1 text-xs font-medium text-ink/50 ring-1 ring-inset ring-ink/10">
                                 Deshabilitada
                               </span>
                             )}
@@ -489,7 +489,7 @@ export default function CocherasManagement() {
                               <button
                                 type="button"
                                 onClick={() => startEditing(cochera)}
-                                className="rounded-lg bg-[#002147]/5 px-3 py-2 text-xs font-semibold text-[#002147] ring-1 ring-inset ring-[#002147]/15 transition-colors hover:bg-[#002147]/10"
+                                className="rounded-lg bg-ink/5 px-3 py-2 text-xs font-semibold text-ink ring-1 ring-inset ring-ink/15 transition-colors hover:bg-ink/10"
                               >
                                 Editar
                               </button>
