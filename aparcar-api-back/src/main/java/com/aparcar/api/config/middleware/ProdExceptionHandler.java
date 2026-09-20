@@ -9,6 +9,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import org.springframework.security.access.AccessDeniedException;
 
 import java.util.List;
@@ -75,5 +76,20 @@ public class ProdExceptionHandler {
                         null
                 )
         );
+    }
+
+    @ExceptionHandler(HandlerMethodValidationException.class)
+    public ResponseEntity<ErrorResponseDto> handleHandlerMethodValidationException(HandlerMethodValidationException e) {
+        List<String> errors = e.getAllErrors().stream()
+                .map(org.springframework.context.MessageSourceResolvable::getDefaultMessage)
+                .distinct()
+                .toList();
+
+        return ResponseEntity.badRequest().body(
+                new ErrorResponseDto(
+                        HttpStatus.BAD_REQUEST.value(),
+                        "Validation failed",
+                        errors
+                ));
     }
 }
