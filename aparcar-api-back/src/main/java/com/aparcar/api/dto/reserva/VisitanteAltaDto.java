@@ -2,16 +2,18 @@ package com.aparcar.api.dto.reserva;
 
 import com.aparcar.api.entity.reserva.VehiculoTipo;
 import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.FutureOrPresent;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import lombok.Data;
 
+import java.time.LocalDate;
 import java.util.UUID;
 
 /**
  * Alta operativa de un visitante desde el panel del admin: crea en un solo acto
- * la cuenta, su vehiculo y la reserva del dia.
+ * la cuenta, su vehiculo y la reserva para la fecha elegida.
  *
  * <p>Los tres van juntos a proposito. Antes el frontend hacia dos llamadas
  * sueltas (crear visitante, crear vehiculo) y si la segunda fallaba quedaba un
@@ -46,4 +48,8 @@ public class VisitanteAltaDto {
 
     @NotNull(message = "La cochera es obligatoria")
     private UUID cocheraId;
+
+    // Si se omite, se conserva el alta para hoy de los clientes existentes.
+    @FutureOrPresent(message = "La fecha no puede ser anterior a hoy")
+    private LocalDate fecha;
 }

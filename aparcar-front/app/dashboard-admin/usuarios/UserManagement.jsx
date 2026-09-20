@@ -572,10 +572,6 @@ export default function UserManagement() {
                           Roles
                         </th>
 
-                        <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-ink/50">
-                          Estado
-                        </th>
-
                         <th className="px-6 py-3 text-right text-xs font-semibold uppercase tracking-wider text-ink/50">
                           Acciones
                         </th>
@@ -619,18 +615,6 @@ export default function UserManagement() {
                                 )
                               )}
                             </div>
-                          </td>
-
-                          <td className="whitespace-nowrap px-6 py-4">
-                            {user.isActive ? (
-                              <span className="rounded-full bg-accent/10 px-2.5 py-1 text-xs font-medium text-accent ring-1 ring-inset ring-accent/20">
-                                Activo
-                              </span>
-                            ) : (
-                              <span className="rounded-full bg-ink/5 px-2.5 py-1 text-xs font-medium text-ink/50 ring-1 ring-inset ring-ink/10">
-                                Inactivo
-                              </span>
-                            )}
                           </td>
 
                           <td className="px-6 py-4">

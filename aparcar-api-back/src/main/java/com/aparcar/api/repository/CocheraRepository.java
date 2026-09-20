@@ -20,10 +20,11 @@ public interface CocheraRepository extends JpaRepository<Cochera, UUID> {
     /**
      * Cualquier parametro en null se ignora (no filtra por ese campo). El
      * filtro de sector es parcial e insensible a mayusculas/minusculas.
+     * El cast explicito evita que PostgreSQL interprete el sector nulo como bytea.
      */
     @Query("""
             SELECT c FROM Cochera c
-            WHERE (:sector IS NULL OR LOWER(c.sector) LIKE LOWER(CONCAT('%', :sector, '%')))
+            WHERE (CAST(:sector AS string) IS NULL OR LOWER(c.sector) LIKE LOWER(CONCAT('%', CAST(:sector AS string), '%')))
               AND (:tipo IS NULL OR c.tipo = :tipo)
               AND (:estado IS NULL OR c.estado = :estado)
             ORDER BY c.numero

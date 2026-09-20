@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 const { getMock, postMock, putMock, deleteMock, toastSuccessMock, toastErrorMock } = vi.hoisted(() => ({
@@ -65,6 +65,45 @@ describe("CocherasManagement", () => {
 
     expect(await screen.findByText("A-01")).toBeInTheDocument();
     expect(screen.getByText("M-01")).toBeInTheDocument();
+  });
+
+  it("combina tipo y estado sin sector y recupera todas las cocheras al limpiar filtros", async () => {
+    const todas = [cochera(), cochera({ id: "2", numero: "M-01", tipo: "MOTO", estado: "DESHABILITADA" })];
+    mockCocheras(todas, [todas[1]]);
+    const user = userEvent.setup();
+    render(<CocherasManagement />);
+    await screen.findByText("A-01");
+    const tipo = screen.getByDisplayValue("Todos los tipos");
+    const estado = screen.getByDisplayValue("Todos los estados");
+    await user.selectOptions(estado, "DESHABILITADA");
+    await waitFor(() => expect(getMock).toHaveBeenCalledWith(
+      "/api/v1/cocheras", { params: { estado: "DESHABILITADA" } }
+    ));
+    await user.selectOptions(tipo, "MOTO");
+    await waitFor(() => expect(getMock).toHaveBeenCalledWith(
+      "/api/v1/cocheras", { params: { tipo: "MOTO", estado: "DESHABILITADA" } }
+    ));
+    expect(screen.queryByText("A-01")).not.toBeInTheDocument();
+    await user.selectOptions(tipo, "TODOS");
+    await user.selectOptions(estado, "TODOS");
+    expect(await screen.findByText("A-01")).toBeInTheDocument();
+    expect(screen.getByText("M-01")).toBeInTheDocument();
+  });
+
+  it("una respuesta anterior no reemplaza los resultados del filtro actual", async () => {
+    let resolverAnterior;
+    getMock.mockImplementation((url, config) => {
+      if (url.endsWith("/sectores")) return Promise.resolve({ data: ["Planta Baja"] });
+      if (!config.params.tipo) return new Promise((resolve) => { resolverAnterior = resolve; });
+      return Promise.resolve({ data: [cochera({ id: "2", numero: "M-01", tipo: "MOTO" })] });
+    });
+    const user = userEvent.setup();
+    render(<CocherasManagement />);
+    await user.selectOptions(screen.getByDisplayValue("Todos los tipos"), "MOTO");
+    await screen.findByText("M-01");
+    await act(async () => resolverAnterior({ data: [cochera()] }));
+    expect(screen.getByText("M-01")).toBeInTheDocument();
+    expect(screen.queryByText("A-01")).not.toBeInTheDocument();
   });
 
   it("el dropdown de sector se arma con los sectores reales, sin repetidos", async () => {

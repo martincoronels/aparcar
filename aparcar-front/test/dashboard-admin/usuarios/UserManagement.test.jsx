@@ -51,14 +51,16 @@ describe("UserManagement", () => {
 
     expect(await screen.findByText("Juan Perez")).toBeInTheDocument();
     expect(screen.getByText("juan@aparcar.com")).toBeInTheDocument();
-    expect(screen.getByText("Activo")).toBeInTheDocument();
+    expect(screen.queryByRole("columnheader", { name: "Estado" })).not.toBeInTheDocument();
+    expect(screen.queryByText("Activo")).not.toBeInTheDocument();
   });
 
-  it("un usuario inactivo muestra el badge Inactivo y el boton Activar", async () => {
+  it("conserva el boton Activar para usuarios inactivos sin mostrar la columna Estado", async () => {
     getMock.mockResolvedValue({ data: [usuario({ isActive: false })] });
     render(<UserManagement />);
 
-    expect(await screen.findByText("Inactivo")).toBeInTheDocument();
+    await screen.findByText("Juan Perez");
+    expect(screen.queryByText("Inactivo")).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: /activar/i })).toBeInTheDocument();
   });
 
@@ -66,7 +68,7 @@ describe("UserManagement", () => {
     getMock.mockResolvedValue({ data: [usuario({ isActive: true })] });
     render(<UserManagement />);
 
-    await screen.findByText("Activo");
+    await screen.findByText("Juan Perez");
     expect(screen.queryByRole("button", { name: /^activar$/i })).not.toBeInTheDocument();
   });
 
@@ -75,7 +77,7 @@ describe("UserManagement", () => {
     postMock.mockResolvedValue({});
     const user = userEvent.setup();
     render(<UserManagement />);
-    await screen.findByText("Inactivo");
+    await screen.findByText("Juan Perez");
 
     await user.click(screen.getByRole("button", { name: /activar/i }));
 

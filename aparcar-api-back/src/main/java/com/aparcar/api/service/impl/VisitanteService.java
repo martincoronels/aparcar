@@ -72,7 +72,7 @@ public class VisitanteService implements IVisitanteService {
         reservaDto.setVisitanteId(visitante.getId());
         reservaDto.setVehiculoId(vehiculo.id());
         reservaDto.setCocheraId(dto.getCocheraId());
-        reservaDto.setFecha(LocalDate.now());
+        reservaDto.setFecha(dto.getFecha() != null ? dto.getFecha() : LocalDate.now());
         ReservaResponseDto reserva = reservaService.crear(reservaDto, visitante.getEmail(), true);
 
         return new VisitanteAltaResponseDto(toResponseDto(visitante), vehiculo, reserva);

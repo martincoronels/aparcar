@@ -19,6 +19,7 @@ const visitanteSchema = z
       message: "Selecciona un tipo de vehículo",
     }),
     cocheraId: z.string().min(1, "Selecciona una cochera"),
+    fecha: z.string().min(1, "Selecciona una fecha"),
   })
   .superRefine((data, ctx) => {
     if (!formatoPatenteValido(data.patente, data.tipoVehiculo)) {
@@ -35,8 +36,8 @@ const inputClasses =
 const labelClasses = "block text-sm font-medium text-ink/70 mb-1";
 const hoy = () => new Date().toISOString().split("T")[0];
 
-// Da de alta un visitante y lo deja estacionado en el momento: crea la cuenta,
-// su vehículo y la reserva de hoy en una sola llamada. El backend lo resuelve
+// Da de alta un visitante: crea la cuenta, su vehículo y la reserva para la
+// fecha elegida en una sola llamada. El backend lo resuelve
 // en una transacción, así que o entra todo o no entra nada — antes esto eran
 // dos llamadas sueltas y si la segunda fallaba quedaba un visitante huérfano.
 //
@@ -54,25 +55,29 @@ export default function VisitantesContent({ onAltaCreada }) {
     formState: { errors, isSubmitting },
   } = useForm({
     resolver: zodResolver(visitanteSchema),
-    defaultValues: { tipoVehiculo: "AUTO", cocheraId: "" },
+    defaultValues: { tipoVehiculo: "AUTO", cocheraId: "", fecha: hoy() },
   });
 
   const tipoVehiculo = watch("tipoVehiculo");
+  const fecha = watch("fecha");
 
-  // Las cocheras compatibles dependen del tipo de vehículo, así que la lista se
-  // rearma cada vez que el admin cambia el tipo. Siempre para hoy: el alta
-  // reserva en el momento, no a futuro.
+  // La disponibilidad depende de la fecha y del tipo de vehículo.
   useEffect(() => {
+    let vigente = true;
     setValue("cocheraId", "");
     setCocheras([]);
-    if (!tipoVehiculo) return;
+    if (!tipoVehiculo || !fecha) return;
 
     api
-      .get("/api/v1/cocheras/disponibles", { params: { fecha: hoy(), tipoVehiculo } })
-      .then((res) => setCocheras(res.data))
-      .catch(() => toast.error("No se pudieron cargar las cocheras disponibles."));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tipoVehiculo]);
+      .get("/api/v1/cocheras/disponibles", { params: { fecha, tipoVehiculo } })
+      .then((res) => {
+        if (vigente) setCocheras(res.data);
+      })
+      .catch(() => {
+        if (vigente) toast.error("No se pudieron cargar las cocheras disponibles.");
+      });
+    return () => { vigente = false; };
+  }, [tipoVehiculo, fecha, setValue]);
 
   const onSubmit = async (data) => {
     try {
@@ -84,12 +89,13 @@ export default function VisitantesContent({ onAltaCreada }) {
         patente: data.patente,
         tipoVehiculo: data.tipoVehiculo,
         cocheraId: data.cocheraId,
+        fecha: data.fecha,
       });
 
       toast.success(
         `Visitante dado de alta y cochera reservada. Su contraseña inicial es su documento (${data.documento}).`
       );
-      reset({ tipoVehiculo: "AUTO", cocheraId: "" });
+      reset({ tipoVehiculo: "AUTO", cocheraId: "", fecha: hoy() });
       onAltaCreada?.();
     } catch (err) {
       toast.error(
@@ -104,7 +110,7 @@ export default function VisitantesContent({ onAltaCreada }) {
         Nuevo visitante
       </h1>
       <p className="text-sm text-ink/60 mb-8">
-        Cargá sus datos y su vehículo, y elegí la cochera que ocupa hoy. Queda con
+        Cargá sus datos y su vehículo, y elegí la fecha y la cochera de la reserva. Queda con
         cuenta creada y su documento como contraseña inicial.
       </p>
 
@@ -161,9 +167,14 @@ export default function VisitantesContent({ onAltaCreada }) {
                   </select>
                   {errors.tipoVehiculo && <p className="mt-1 text-sm text-red-500">{errors.tipoVehiculo.message}</p>}
                 </div>
+                <div>
+                  <label className={labelClasses} htmlFor="alta-fecha">Fecha</label>
+                  <input id="alta-fecha" type="date" min={hoy()} {...register("fecha")} className={inputClasses} />
+                  {errors.fecha && <p className="mt-1 text-sm text-red-500">{errors.fecha.message}</p>}
+                </div>
                 <div className="sm:col-span-2">
-                  <label className={labelClasses} htmlFor="alta-cocheraId">Cochera (hoy)</label>
-                  <select id="alta-cocheraId" {...register("cocheraId")} className={inputClasses}>
+                  <label className={labelClasses} htmlFor="alta-cocheraId">Cochera</label>
+                  <select id="alta-cocheraId" {...register("cocheraId")} className={inputClasses} disabled={!fecha || !tipoVehiculo}>
                     <option value="">Seleccioná una cochera</option>
                     {cocheras.map((c) => (
                       <option key={c.id} value={c.id}>
@@ -172,9 +183,9 @@ export default function VisitantesContent({ onAltaCreada }) {
                     ))}
                   </select>
                   {errors.cocheraId && <p className="mt-1 text-sm text-red-500">{errors.cocheraId.message}</p>}
-                  {cocheras.length === 0 && (
+                  {fecha && cocheras.length === 0 && (
                     <p className="mt-1 text-sm text-ink/50">
-                      No hay cocheras disponibles hoy para ese tipo de vehículo.
+                      No hay cocheras disponibles para esa fecha y tipo de vehículo.
                     </p>
                   )}
                 </div>

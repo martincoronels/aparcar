@@ -17,6 +17,8 @@ import com.aparcar.api.repository.VisitanteRepository;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.security.test.context.support.WithAnonymousUser;
@@ -354,6 +356,42 @@ public class CocheraControllerTests {
     }
 
     // ---- Filtros del listado ----
+
+    @ParameterizedTest
+    @CsvSource(nullValues = "NULL", textBlock = """
+            NULL, NULL, NULL, A-01;A-02;M-01
+            planta, NULL, NULL, A-01;A-02
+            NULL, AUTO, NULL, A-01;A-02
+            NULL, NULL, DESHABILITADA, A-02
+            planta, AUTO, NULL, A-01;A-02
+            planta, NULL, HABILITADA, A-01
+            NULL, AUTO, HABILITADA, A-01
+            planta, AUTO, HABILITADA, A-01
+            '', NULL, NULL, A-01;A-02;M-01
+            '   ', MOTO, HABILITADA, M-01
+            """)
+    @WithMockUser(authorities = "ADMIN")
+    @DisplayName("[Regresion] lista todas las cocheras y combina filtros sin exigir sector")
+    void listarConFiltrosIndependientes(String sector, String tipo, String estado, String numeros) throws Exception {
+        crearCochera("A-02", CocheraTipo.AUTO, CocheraEstado.DESHABILITADA);
+        crearCochera("A-01", CocheraTipo.AUTO, CocheraEstado.HABILITADA);
+        Cochera moto = crearCochera("M-01", CocheraTipo.MOTO, CocheraEstado.HABILITADA);
+        moto.setSector("Subsuelo");
+        cocheraRepository.save(moto);
+
+        var request = get("/api/v1/cocheras").with(securityContext(getContext()));
+        if (sector != null) request.param("sector", sector);
+        if (tipo != null) request.param("tipo", tipo);
+        if (estado != null) request.param("estado", estado);
+
+        String[] esperados = numeros.split(";");
+        var resultado = mockMvc.perform(request)
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(esperados.length));
+        for (int i = 0; i < esperados.length; i++) {
+            resultado.andExpect(jsonPath("$[" + i + "].numero").value(esperados[i]));
+        }
+    }
 
     @Test
     @WithMockUser(authorities = "ADMIN")
