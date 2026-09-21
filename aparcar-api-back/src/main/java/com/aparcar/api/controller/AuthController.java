@@ -22,18 +22,8 @@ public class AuthController {
 
     @PostMapping("/register")
     public ResponseEntity<RegisteredUserDto> register(@Valid @RequestBody RegistrationDto registrationDto) {
-        // Escape HTML characters to prevent XSS attacks
-        registrationDto.setEmail(HtmlUtils.htmlEscape(registrationDto.getEmail()));
-        registrationDto.setNombre(HtmlUtils.htmlEscape(registrationDto.getNombre()));
-
+        // Son datos JSON, no HTML. Escaparlos aquí alteraría el email de login.
         RegisteredUserDto registeredUser = authService.register(registrationDto);
-        registeredUser = new RegisteredUserDto(
-                HtmlUtils.htmlEscape(registeredUser.nombre()),
-                registeredUser.documento(),
-                HtmlUtils.htmlEscape(registeredUser.email()),
-                registeredUser.telefono(),
-                registeredUser.authorities()
-        );
 
         return ResponseEntity.status(HttpStatus.CREATED).body(registeredUser);
     }

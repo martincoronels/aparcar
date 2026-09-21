@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -44,6 +44,7 @@ const TIPO_LABELS = {
 export default function CocherasManagement() {
   const [cocheras, setCocheras] = useState([]);
   const [loadingCocheras, setLoadingCocheras] = useState(true);
+  const solicitudCocheras = useRef(0);
   const [editingCochera, setEditingCochera] = useState(null);
 
   const [filtroSector, setFiltroSector] = useState("");
@@ -125,7 +126,8 @@ export default function CocherasManagement() {
     }
   }, [sectoresCargados, sectoresDisponibles.length]);
 
-  const loadCocheras = async () => {
+  const loadCocheras = useCallback(async () => {
+    const solicitud = ++solicitudCocheras.current;
     try {
       setLoadingCocheras(true);
 
@@ -137,29 +139,28 @@ export default function CocherasManagement() {
 
       const response = await api.get("/api/v1/cocheras", { params });
 
-      setCocheras(response.data);
+      if (solicitud === solicitudCocheras.current) setCocheras(response.data);
     } catch (error) {
-      toast.error(
-        error.response?.data?.message || "No se pudieron cargar las cocheras."
-      );
+      if (solicitud === solicitudCocheras.current) {
+        toast.error(
+          error.response?.data?.message || "No se pudieron cargar las cocheras."
+        );
+      }
     } finally {
-      setLoadingCocheras(false);
+      if (solicitud === solicitudCocheras.current) setLoadingCocheras(false);
     }
-  };
+  }, [filtroSector, filtroTipo, filtroEstado, filtroFecha]);
 
   useEffect(() => {
     cargarSectores();
   }, []);
 
-  // Debounce de 300ms: cubre tanto el tipeo en el filtro de sector como los
-  // demas filtros, para no disparar un pedido por cada tecla.
+  // Carga inicial y filtros inmediatos; una respuesta anterior no debe
+  // reemplazar el resultado de los filtros actuales.
   useEffect(() => {
-    const timer = setTimeout(() => {
-      loadCocheras();
-    }, 300);
-    return () => clearTimeout(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filtroSector, filtroTipo, filtroEstado, filtroFecha]);
+    loadCocheras();
+    return () => { solicitudCocheras.current += 1; };
+  }, [loadCocheras]);
 
   const refrescarTodo = async () => {
     await Promise.all([loadCocheras(), cargarSectores()]);

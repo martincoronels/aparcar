@@ -46,6 +46,7 @@ describe("LoginPage", () => {
     expect(screen.getByPlaceholderText("Correo electrónico")).toBeInTheDocument();
     expect(screen.getByPlaceholderText("Contraseña")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /ingresar/i })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Registrate" })).toHaveAttribute("href", "/register");
   });
 
   it("muestra errores de validacion y no llama a la API si el email esta vacio", async () => {
@@ -103,6 +104,18 @@ describe("LoginPage", () => {
     await waitFor(() => expect(pushMock).toHaveBeenCalledWith("/dashboard-admin"));
     expect(setAuthMock).toHaveBeenCalled();
     expect(toastSuccessMock).toHaveBeenCalled();
+  });
+
+  it("codifica las contraseñas Unicode en UTF-8 para HTTP Basic", async () => {
+    postMock.mockResolvedValue({ headers: { authorization: `Bearer ${fakeJwt("USER")}` } });
+    const user = userEvent.setup();
+    render(<LoginPage />);
+    await user.type(screen.getByPlaceholderText("Correo electrónico"), "ana@test.com");
+    await user.type(screen.getByPlaceholderText("Contraseña"), "Contraseña🔑");
+    await user.click(screen.getByRole("button", { name: /ingresar/i }));
+    await waitFor(() => expect(postMock).toHaveBeenCalledTimes(1));
+    expect(postMock.mock.calls[0][2].headers.Authorization)
+      .toBe(`Basic ${Buffer.from("ana@test.com:Contraseña🔑", "utf8").toString("base64")}`);
   });
 
   it("con solo rol USER en el JWT, redirige a /dashboard-user", async () => {

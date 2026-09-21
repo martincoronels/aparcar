@@ -162,8 +162,7 @@ public class VisitanteServiceTests {
         assertEquals(response.visitante().id(), captor.getValue().getVisitanteId());
     }
 
-    // "Se reserva la cochera para ese momento": el alta no pide fecha, siempre
-    // es hoy.
+    // Compatibilidad con clientes que no mandan fecha: se reserva para hoy.
     @Test
     @DisplayName("altaConReserva reserva la cochera indicada para hoy")
     void altaReservaLaCocheraParaHoy() {
@@ -175,6 +174,19 @@ public class VisitanteServiceTests {
         assertEquals(LocalDate.now(), captor.getValue().getFecha());
         assertEquals(COCHERA_ID, captor.getValue().getCocheraId());
         assertEquals(VEHICULO_ID, captor.getValue().getVehiculoId());
+    }
+
+    @Test
+    @DisplayName("altaConReserva usa la fecha elegida al crear la reserva")
+    void altaReservaParaLaFechaElegida() {
+        LocalDate fecha = LocalDate.now().plusDays(7);
+        dto.setFecha(fecha);
+
+        visitanteService.altaConReserva(dto);
+
+        ArgumentCaptor<ReservaRequestDto> captor = ArgumentCaptor.forClass(ReservaRequestDto.class);
+        verify(reservaService).crear(captor.capture(), any(), anyBoolean());
+        assertEquals(fecha, captor.getValue().getFecha());
     }
 
     // El alta es todo o nada: si la cochera ya estaba tomada, la excepcion sale

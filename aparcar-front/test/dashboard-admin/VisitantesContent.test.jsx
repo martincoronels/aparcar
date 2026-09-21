@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 const { getMock, postMock, toastSuccessMock, toastErrorMock } = vi.hoisted(() => ({
@@ -46,6 +46,45 @@ async function completarFormulario(user, overrides = {}) {
 describe("VisitantesContent (alta de visitante con reserva)", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+  });
+
+  it("consulta disponibilidad y reserva para la fecha elegida, limpiando la cochera anterior", async () => {
+    mockCocheras([cochera()]);
+    postMock.mockResolvedValue({ data: {} });
+    const user = userEvent.setup();
+    render(<VisitantesContent />);
+    await completarFormulario(user);
+    await user.selectOptions(screen.getByLabelText("Cochera"), "c1");
+
+    const futura = new Date();
+    futura.setDate(futura.getDate() + 7);
+    const fecha = futura.toISOString().split("T")[0];
+    fireEvent.change(screen.getByLabelText("Fecha"), { target: { value: fecha } });
+
+    await waitFor(() => expect(getMock).toHaveBeenLastCalledWith(
+      "/api/v1/cocheras/disponibles", { params: { fecha, tipoVehiculo: "AUTO" } }
+    ));
+    expect(screen.getByLabelText("Cochera")).toHaveValue("");
+    await user.selectOptions(screen.getByLabelText("Cochera"), "c1");
+    await user.click(screen.getByRole("button", { name: /dar de alta y reservar/i }));
+    await waitFor(() => expect(postMock).toHaveBeenCalledWith(
+      "/api/v1/visitantes/alta", expect.objectContaining({ fecha, cocheraId: "c1" })
+    ));
+  });
+
+  it("ignora respuestas de disponibilidad de una fecha anterior y deshabilita la cochera sin fecha", async () => {
+    let resolverAnterior;
+    getMock.mockImplementationOnce(() => new Promise((resolve) => { resolverAnterior = resolve; }))
+      .mockResolvedValue({ data: [cochera({ id: "c2", numero: "A-02" })] });
+    render(<VisitantesContent />);
+    fireEvent.change(screen.getByLabelText("Fecha"), { target: { value: "2099-01-01" } });
+    await screen.findByRole("option", { name: /A-02/ });
+    await act(async () => resolverAnterior({ data: [cochera()] }));
+    expect(screen.queryByRole("option", { name: /A-01/ })).not.toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText("Fecha"), { target: { value: "" } });
+    expect(screen.getByLabelText("Cochera")).toBeDisabled();
+    expect(screen.queryByRole("option", { name: /A-02/ })).not.toBeInTheDocument();
   });
 
   it("muestra errores si se envia el formulario vacio", async () => {
@@ -123,7 +162,7 @@ describe("VisitantesContent (alta de visitante con reserva)", () => {
 
     await completarFormulario(user);
     await screen.findByRole("option", { name: /A-01/ });
-    await user.selectOptions(screen.getByLabelText("Cochera (hoy)"), "c1");
+    await user.selectOptions(screen.getByLabelText("Cochera"), "c1");
     await user.click(screen.getByRole("button", { name: /dar de alta y reservar/i }));
 
     await waitFor(() => expect(postMock).toHaveBeenCalledTimes(1));
@@ -148,7 +187,7 @@ describe("VisitantesContent (alta de visitante con reserva)", () => {
 
     await completarFormulario(user);
     await screen.findByRole("option", { name: /A-01/ });
-    await user.selectOptions(screen.getByLabelText("Cochera (hoy)"), "c1");
+    await user.selectOptions(screen.getByLabelText("Cochera"), "c1");
     await user.click(screen.getByRole("button", { name: /dar de alta y reservar/i }));
 
     await waitFor(() =>
@@ -165,7 +204,7 @@ describe("VisitantesContent (alta de visitante con reserva)", () => {
 
     await completarFormulario(user);
     await screen.findByRole("option", { name: /A-01/ });
-    await user.selectOptions(screen.getByLabelText("Cochera (hoy)"), "c1");
+    await user.selectOptions(screen.getByLabelText("Cochera"), "c1");
     await user.click(screen.getByRole("button", { name: /dar de alta y reservar/i }));
 
     await waitFor(() => expect(onAltaCreada).toHaveBeenCalled());
@@ -181,7 +220,7 @@ describe("VisitantesContent (alta de visitante con reserva)", () => {
 
     await completarFormulario(user);
     await screen.findByRole("option", { name: /A-01/ });
-    await user.selectOptions(screen.getByLabelText("Cochera (hoy)"), "c1");
+    await user.selectOptions(screen.getByLabelText("Cochera"), "c1");
     await user.click(screen.getByRole("button", { name: /dar de alta y reservar/i }));
 
     await waitFor(() =>

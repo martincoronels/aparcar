@@ -17,6 +17,7 @@ import com.aparcar.api.service.IAuthService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.validation.annotation.Validated;
 
@@ -39,16 +40,15 @@ public class AuthService implements IAuthService {
     @Override
     public RegisteredUserDto register(RegistrationDto registrationDto) {
         if (visitanteRepository.existsByEmail(registrationDto.getEmail())) {
-            throw new ValidationException("Email already registered.");
+            throw new ValidationException("Ya existe una cuenta asociada a ese email.");
         }
 
         if (visitanteRepository.existsByDocumento(registrationDto.getDocumento())) {
             throw new ValidationException("Ya existe un visitante con ese documento.");
         }
 
-        // Toda cuenta nace como USER y activa: la crea un admin desde el panel,
-        // no un desconocido registrandose solo, asi que no hay nada que
-        // aprobar despues. El rol se cambia desde Gestion de usuarios.
+        // El registro público y el administrativo crean siempre un USER activo.
+        // Los roles solo se modifican desde Gestión de usuarios (ADMIN).
         String hashedPassword = passwordEncoder.encode(registrationDto.getPassword());
         Visitante user = new Visitante(
                 registrationDto.getNombre(),
@@ -58,7 +58,21 @@ public class AuthService implements IAuthService {
                 registrationDto.getTelefono(),
                 Set.of(AppAuthority.USER),
                 true);
-        Visitante savedUser = visitanteRepository.save(user);
+        Visitante savedUser;
+        try {
+            // save realiza su propia transacción. Si otra solicitud gana la
+            // carrera, la restricción UNIQUE impide crear una segunda cuenta.
+            savedUser = visitanteRepository.save(user);
+        } catch (DataIntegrityViolationException ex) {
+            // Consultar después del rollback, nunca en una transacción fallida.
+            if (visitanteRepository.existsByEmail(registrationDto.getEmail())) {
+                throw new ValidationException("Ya existe una cuenta asociada a ese email.");
+            }
+            if (visitanteRepository.existsByDocumento(registrationDto.getDocumento())) {
+                throw new ValidationException("Ya existe un visitante con ese documento.");
+            }
+            throw ex;
+        }
 
         return new RegisteredUserDto(
                 savedUser.getNombre(),

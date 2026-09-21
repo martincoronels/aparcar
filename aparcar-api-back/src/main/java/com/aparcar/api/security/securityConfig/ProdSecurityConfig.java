@@ -123,6 +123,7 @@ public class ProdSecurityConfig {
                         // caiga en la regla de ADMIN de /api/v1/cocheras/** de abajo.
                         .requestMatchers(
                                 "/api/v1/cocheras/disponibles",
+                                "/register",
                                 "/forgot-password",
                                 "/reset-password"
                         ).permitAll()
@@ -134,14 +135,13 @@ public class ProdSecurityConfig {
                                 "/api/v1/visitantes/me/**"
                         ).authenticated()
 
-                        // Solo ADMIN puede gestionar usuarios, registrar
-                        // nuevos usuarios internos, dar de alta visitantes y
+                        // Solo ADMIN puede gestionar usuarios, dar de alta
+                        // visitantes con reserva y
                         // administrar cocheras.
 
                         .requestMatchers(
                                 "/users/**",
                                 "/api/v1/usuarios/**",
-                                "/register",
                                 "/api/v1/cocheras/**",
                                 "/api/v1/visitantes/**"
                         ).hasAuthority("ADMIN")

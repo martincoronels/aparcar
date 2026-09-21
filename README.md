@@ -21,13 +21,40 @@ Oficinas, universidades, sanatorios y organizadores de eventos administran sus c
 
 **AparcAR** es la plataforma que un establecimiento usa para poner orden en su estacionamiento: cada visitante con su vehículo, su reserva y su cochera asignada — sin superposiciones, sin sorpresas en la barrera.
 
-- 🔐 **Acceso controlado** para el personal interno del establecimiento
+- 🔐 **Acceso por roles** para administradores y visitantes
+- 👤 **Registro público de visitantes** desde la pantalla de inicio de sesión
 - 🧍 **Registro de visitantes** y sus vehículos (patente y tipo)
 - 🅿️ **Cocheras clasificadas** por número, sector y tipo (auto, moto, accesible, carga)
 - 📅 **Reservas por fecha**, con asignación de una cochera compatible
 - 🚫 **Cero sobreocupación** — el sistema jamás asigna dos reservas al mismo lugar
 
 ## Cómo está armado
+
+### Registro de visitantes
+
+Desde **Iniciar sesión → Registrate**, el visitante completa nombre, DNI/documento,
+email, teléfono opcional y una contraseña de al menos 8 caracteres con confirmación.
+No necesita cargar un vehículo ni hacer una reserva para crear su cuenta.
+
+El formulario reutiliza `POST /register`, `AuthService`, BCrypt y el límite de
+intentos existente. El servidor crea una cuenta **activa con rol USER**; los roles
+enviados por el cliente no se utilizan. Al finalizar vuelve al login habitual y,
+una vez autenticado, accede al mismo panel de vehículos y reservas. La cuenta
+aparece automáticamente en **Gestión de usuarios** del administrador.
+
+Se rechazan documentos y emails existentes, incluso cuentas inactivas. Se eliminan
+espacios en los extremos y el email se compara sin distinguir mayúsculas. Las
+contraseñas conservan exactamente lo escrito y se validan contra el límite de
+72 bytes UTF-8 de BCrypt.
+
+La migración Liquibase `005-identidad-visitante-unica.yaml` agrega índices únicos
+en PostgreSQL para proteger esas mismas reglas ante solicitudes simultáneas. No
+borra ni fusiona datos: si una base anterior contiene emails que solo difieren en
+mayúsculas/espacios, o documentos que solo difieren en espacios extremos, hay que
+resolver esos duplicados antes de aplicar la migración. El alta administrativa con
+vehículo y reserva conserva su flujo.
+
+### Estructura
 
 Este repositorio contiene las dos mitades del proyecto:
 
