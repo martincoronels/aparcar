@@ -9,6 +9,7 @@ import { toast } from "sonner";
 
 import api from "@/app/api";
 import LogoutButton from "@/components/LogoutButton";
+import DashboardHeader from "@/components/DashboardHeader";
 
 const cocheraSchema = z.object({
   numero: z.string().min(1, "El número es obligatorio"),
@@ -30,9 +31,9 @@ const OTRO_SECTOR = "__OTRO__";
 const filaVacia = () => ({ numero: "", sector: "", tipo: "AUTO", estado: "HABILITADA" });
 
 const inputClasses =
-  "block w-full rounded-xl border-0 py-3 px-4 text-ink bg-surface ring-1 ring-inset ring-ink/20 placeholder:text-ink/40 focus:z-10 focus:ring-2 focus:ring-inset focus:ring-accent sm:text-sm sm:leading-6 transition-all";
+  "ui-input";
 
-const labelClasses = "block text-sm font-medium text-ink/70 mb-1";
+const labelClasses = "ui-label";
 
 const TIPO_LABELS = {
   AUTO: "Auto",
@@ -290,17 +291,16 @@ export default function CocherasManagement() {
   };
 
   return (
-    <div className="min-h-screen bg-bg px-4 py-12 sm:px-6 lg:px-8">
-      <div className="mx-auto max-w-7xl">
-        <div className="mb-8 flex flex-wrap items-center justify-between gap-3">
+    <div className="dashboard-shell">
+      <div className="dashboard-container">
+        <DashboardHeader actions={<LogoutButton />}>
           <Link
             href="/dashboard-admin"
-            className="rounded-xl bg-surface px-4 py-2 text-sm font-semibold text-ink ring-1 ring-inset ring-ink/20 transition-colors hover:bg-ink/5"
+            className="dashboard-back-link"
           >
             ← Volver al panel
           </Link>
-          <LogoutButton />
-        </div>
+        </DashboardHeader>
 
         <div className="mb-8">
           <h1 className="text-3xl font-extrabold tracking-tight text-ink">
@@ -312,9 +312,9 @@ export default function CocherasManagement() {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
-          <div className="lg:col-span-1">
-            <div className="rounded-2xl bg-surface p-6 shadow-xl shadow-ink/10 ring-1 ring-ink/15">
+        <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
+          <div className="xl:col-span-1">
+            <div className="ui-card p-6">
               <h2 className="text-xl font-bold text-ink">Nueva cochera</h2>
 
               <p className="mt-1 mb-6 text-sm text-ink/60">
@@ -361,7 +361,7 @@ export default function CocherasManagement() {
                             setSectorCreateEsNuevo(false);
                             setValueCreate("sector", "", { shouldValidate: false });
                           }}
-                          className="mt-1 text-xs font-medium text-accent hover:text-brand"
+                          className="mt-1 text-xs font-medium text-link hover:text-brand"
                         >
                           ‹ Elegir de la lista
                         </button>
@@ -440,14 +440,14 @@ export default function CocherasManagement() {
                 <button
                   type="submit"
                   disabled={isCreating}
-                  className="flex w-full justify-center rounded-xl bg-accent px-3 py-3 text-sm font-semibold text-white transition-all hover:bg-brand disabled:cursor-not-allowed disabled:opacity-50"
+                  className="ui-primary flex w-full justify-center px-3 py-3 text-sm font-semibold transition-all disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {isCreating ? "Creando..." : "Crear cochera"}
                 </button>
               </form>
             </div>
 
-            <div className="mt-8 rounded-2xl bg-surface p-6 shadow-xl shadow-ink/10 ring-1 ring-ink/15">
+            <div className="mt-8 ui-card p-6">
               <h2 className="text-xl font-bold text-ink">Alta en lote</h2>
 
               <p className="mt-1 mb-6 text-sm text-ink/60">
@@ -550,7 +550,7 @@ export default function CocherasManagement() {
                   <button
                     type="submit"
                     disabled={isCreandoLote}
-                    className="flex-1 rounded-xl bg-accent px-4 py-2.5 text-sm font-semibold text-white transition-all hover:bg-brand disabled:cursor-not-allowed disabled:opacity-50"
+                    className="ui-primary flex-1 px-4 py-2.5 text-sm font-semibold transition-all disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {isCreandoLote
                       ? "Creando..."
@@ -561,9 +561,9 @@ export default function CocherasManagement() {
             </div>
           </div>
 
-          <div className="lg:col-span-2">
+          <div className="xl:col-span-2">
             {editingCochera && (
-              <div className="mb-8 rounded-2xl bg-surface p-6 shadow-xl shadow-ink/10 ring-1 ring-ink/15">
+              <div className="mb-8 ui-card p-6">
                 <div className="mb-6 flex items-start justify-between gap-4">
                   <div>
                     <h2 className="text-xl font-bold text-ink">Editar cochera</h2>
@@ -608,7 +608,7 @@ export default function CocherasManagement() {
                                 setSectorEditEsNuevo(false);
                                 setValueEdit("sector", "", { shouldValidate: false });
                               }}
-                              className="mt-1 text-xs font-medium text-accent hover:text-brand"
+                              className="mt-1 text-xs font-medium text-link hover:text-brand"
                             >
                               ‹ Elegir de la lista
                             </button>
@@ -670,7 +670,7 @@ export default function CocherasManagement() {
                   <button
                     type="submit"
                     disabled={isEditing}
-                    className="rounded-xl bg-accent px-5 py-3 text-sm font-semibold text-white transition-all hover:bg-brand disabled:cursor-not-allowed disabled:opacity-50"
+                    className="ui-primary px-5 py-3 text-sm font-semibold transition-all disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {isEditing ? "Guardando..." : "Guardar cambios"}
                   </button>
@@ -678,12 +678,12 @@ export default function CocherasManagement() {
               </div>
             )}
 
-            <div className="overflow-hidden rounded-2xl bg-surface shadow-xl shadow-ink/10 ring-1 ring-ink/15">
+            <div className="overflow-hidden ui-card">
               <div className="border-b border-ink/10 px-6 py-5">
                 <h2 className="text-xl font-bold text-ink">Cocheras</h2>
                 <p className="mt-1 text-sm text-ink/60">Cocheras registradas en el predio.</p>
 
-                <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-4">
+                <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
                   <select
                     value={filtroSector || "TODOS"}
                     onChange={(e) => setFiltroSector(e.target.value === "TODOS" ? "" : e.target.value)}
@@ -731,7 +731,7 @@ export default function CocherasManagement() {
                       <button
                         type="button"
                         onClick={() => setFiltroFecha("")}
-                        className="mt-1 text-xs font-medium text-accent hover:text-brand"
+                        className="mt-1 text-xs font-medium text-link hover:text-brand"
                       >
                         Quitar filtro de fecha
                       </button>
@@ -749,51 +749,51 @@ export default function CocherasManagement() {
                   No hay cocheras que coincidan con los filtros.
                 </div>
               ) : (
-                <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-ink/10">
-                    <thead className="bg-surface">
-                      <tr>
-                        <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-ink/50">
+                <div className="responsive-table-scroll overflow-x-auto">
+                  <table role="table" className="responsive-table min-w-full divide-y divide-ink/10">
+                    <thead role="rowgroup" className="bg-surface">
+                      <tr role="row">
+                        <th scope="col" role="columnheader" className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-ink/50">
                           Número
                         </th>
-                        <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-ink/50">
+                        <th scope="col" role="columnheader" className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-ink/50">
                           Sector
                         </th>
-                        <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-ink/50">
+                        <th scope="col" role="columnheader" className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-ink/50">
                           Tipo
                         </th>
-                        <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-ink/50">
+                        <th scope="col" role="columnheader" className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-ink/50">
                           Estado
                         </th>
-                        <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-ink/50">
+                        <th scope="col" role="columnheader" className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-ink/50">
                           {filtroFecha ? `Disponibilidad (${filtroFecha})` : "Disponibilidad"}
                         </th>
-                        <th className="px-6 py-3 text-right text-xs font-semibold uppercase tracking-wider text-ink/50">
+                        <th scope="col" role="columnheader" className="px-6 py-3 text-right text-xs font-semibold uppercase tracking-wider text-ink/50">
                           Acciones
                         </th>
                       </tr>
                     </thead>
 
-                    <tbody className="divide-y divide-ink/10">
+                    <tbody role="rowgroup" className="divide-y divide-ink/10">
                       {cocheras.map((cochera) => (
-                        <tr key={cochera.id} className="transition-colors hover:bg-accent/5">
-                          <td className="whitespace-nowrap px-6 py-4 font-medium text-ink">
+                        <tr role="row" key={cochera.id} className="transition-colors hover:bg-accent/5">
+                          <td role="cell" data-label="Número" className="whitespace-nowrap px-6 py-4 font-medium text-ink">
                             {cochera.numero}
                           </td>
 
-                          <td className="whitespace-nowrap px-6 py-4 text-sm text-ink/70">
+                          <td role="cell" data-label="Sector" className="whitespace-nowrap px-6 py-4 text-sm text-ink/70">
                             {cochera.sector}
                           </td>
 
-                          <td className="whitespace-nowrap px-6 py-4">
-                            <span className="rounded-full bg-accent/10 px-2.5 py-1 text-xs font-medium text-accent ring-1 ring-inset ring-accent/20">
+                          <td role="cell" data-label="Tipo" className="whitespace-nowrap px-6 py-4">
+                            <span className="rounded-full bg-accent/10 px-2.5 py-1 text-xs font-medium text-link ring-1 ring-inset ring-accent/20">
                               {TIPO_LABELS[cochera.tipo]}
                             </span>
                           </td>
 
-                          <td className="whitespace-nowrap px-6 py-4">
+                          <td role="cell" data-label="Estado" className="whitespace-nowrap px-6 py-4">
                             {cochera.estado === "HABILITADA" ? (
-                              <span className="rounded-full bg-accent/10 px-2.5 py-1 text-xs font-medium text-accent ring-1 ring-inset ring-accent/20">
+                              <span className="rounded-full bg-accent/10 px-2.5 py-1 text-xs font-medium text-link ring-1 ring-inset ring-accent/20">
                                 Habilitada
                               </span>
                             ) : (
@@ -803,14 +803,14 @@ export default function CocherasManagement() {
                             )}
                           </td>
 
-                          <td className="whitespace-nowrap px-6 py-4">
+                          <td role="cell" data-label={filtroFecha ? `Disponibilidad (${filtroFecha})` : "Disponibilidad"} className="whitespace-nowrap px-6 py-4">
                             {cochera.disponibleEnFecha === true && (
-                              <span className="rounded-full bg-accent/10 px-2.5 py-1 text-xs font-medium text-accent ring-1 ring-inset ring-accent/20">
+                              <span className="rounded-full bg-accent/10 px-2.5 py-1 text-xs font-medium text-link ring-1 ring-inset ring-accent/20">
                                 Libre
                               </span>
                             )}
                             {cochera.disponibleEnFecha === false && (
-                              <span className="rounded-full bg-red-50 px-2.5 py-1 text-xs font-medium text-red-600 ring-1 ring-inset ring-red-200">
+                              <span className="rounded-full bg-red-50 px-2.5 py-1 text-xs font-medium text-red-600 ring-1 ring-inset ring-red-200 dark:bg-red-500/10 dark:text-red-300 dark:ring-red-400/20 dark:border-red-400/25 dark:hover:bg-red-500/20">
                                 Ocupada
                               </span>
                             )}
@@ -819,7 +819,7 @@ export default function CocherasManagement() {
                             )}
                           </td>
 
-                          <td className="px-6 py-4">
+                          <td role="cell" data-label="Acciones" className="px-6 py-4">
                             <div className="flex justify-end gap-2">
                               <button
                                 type="button"
@@ -832,7 +832,7 @@ export default function CocherasManagement() {
                               <button
                                 type="button"
                                 onClick={() => deleteCochera(cochera)}
-                                className="rounded-lg bg-red-50 px-3 py-2 text-xs font-semibold text-red-600 ring-1 ring-inset ring-red-200 transition-colors hover:bg-red-100"
+                                className="rounded-lg bg-red-50 px-3 py-2 text-xs font-semibold text-red-600 ring-1 ring-inset ring-red-200 transition-colors hover:bg-red-100 dark:bg-red-500/10 dark:text-red-300 dark:ring-red-400/20 dark:border-red-400/25 dark:hover:bg-red-500/20"
                               >
                                 Eliminar
                               </button>

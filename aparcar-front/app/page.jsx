@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "../store/authStore";
+import Brand from "@/components/Brand";
+import ParkingIllustration from "@/components/ParkingIllustration";
 
 function CarIcon({ className }) {
   return (
@@ -108,17 +110,8 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-bg">
       <header className="sticky top-0 z-20 border-b border-ink/10 bg-surface/90 backdrop-blur">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-4 sm:px-6">
-          <div className="flex items-center gap-3">
-            <img
-              src="/Logo.jpeg"
-              alt="AparcAR"
-              className="h-10 w-auto object-contain"
-            />
-            <span className="text-lg font-extrabold tracking-tight text-ink">
-              AparcAR
-            </span>
-          </div>
+        <div className="landing-header-inner mx-auto flex max-w-6xl items-center justify-between px-4 sm:px-6">
+          <Brand />
 
           <nav className="hidden items-center gap-8 md:flex">
             {NAV_LINKS.map((link) => (
@@ -133,7 +126,7 @@ export default function Home() {
 
             <Link
               href="/login"
-              className="rounded-xl bg-accent px-5 py-2.5 text-sm font-semibold text-white transition-all hover:bg-brand"
+              className="ui-primary px-5 py-2.5 text-sm font-semibold transition-all"
             >
               Iniciar sesión
             </Link>
@@ -182,7 +175,7 @@ export default function Home() {
 
               <Link
                 href="/login"
-                className="rounded-xl bg-accent px-5 py-3 text-center text-sm font-semibold text-white"
+                className="ui-primary px-5 py-3 text-center text-sm font-semibold"
               >
                 Iniciar sesión
               </Link>
@@ -192,34 +185,39 @@ export default function Home() {
       </header>
 
       <main>
-        <section className="mx-auto max-w-6xl px-4 py-20 text-center sm:px-6 sm:py-28">
-          <h1 className="mx-auto max-w-3xl text-4xl font-extrabold tracking-tight text-ink sm:text-6xl">
-            Nadie debería dar vueltas buscando dónde estacionar
-          </h1>
-
-          <p className="mx-auto mt-6 max-w-2xl text-lg text-ink/60">
-            AparcAR administra las cocheras de tu edificio, universidad,
-            sanatorio o evento: cada visitante entra sabiendo que ya tiene un
-            lugar asignado.
-          </p>
-
-          <div className="mt-10 flex justify-center">
-            <Link
-              href="/login"
-              className="rounded-xl bg-accent px-8 py-4 text-base font-semibold text-white transition-all hover:bg-brand"
-            >
-              Iniciar sesión
-            </Link>
+        <section className="hero mx-auto max-w-6xl px-4 sm:px-6">
+          <div>
+            <p className="eyebrow">ESTACIONAMIENTO, EN ORDEN</p>
+            <h1>Nadie debería dar vueltas buscando <span>dónde estacionar.</span></h1>
+            <p className="hero-description">
+              AparcAR administra las cocheras de tu edificio, universidad,
+              sanatorio o evento: cada visitante entra sabiendo que ya tiene un
+              lugar asignado.
+            </p>
+            <div className="hero-action">
+              <Link href="/login" className="ui-primary">Iniciar sesión <span aria-hidden="true">↗</span></Link>
+            </div>
+            <p className="hero-detail">Cada visitante. Cada vehículo. Un lugar asignado.</p>
           </div>
+          <ParkingIllustration />
         </section>
 
-        <section id="servicio" className="bg-ink/3 py-20">
-          <div className="mx-auto max-w-6xl px-4 sm:px-6">
-            <h2 className="text-center text-3xl font-extrabold tracking-tight text-ink">
-              Todo lo que necesita tu predio
-            </h2>
+        <div className="mx-auto max-w-6xl px-4 sm:px-6">
+          <div className="audience-strip">
+            <p>Pensado para los espacios<br className="hidden sm:block" /> que compartimos.</p>
+            <div><span>Edificios</span><span>Universidades</span><span>Sanatorios</span><span>Eventos</span></div>
+          </div>
+        </div>
 
-            <div className="mt-12 grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-4">
+        <section id="servicio" className="py-16 sm:py-24">
+          <div className="mx-auto max-w-6xl px-4 sm:px-6">
+            <div className="section-heading">
+              <p className="eyebrow">MENOS GESTIÓN. MÁS CONTROL.</p>
+              <h2>Todo lo que necesita tu predio</h2>
+              <p>Un espacio organizado empieza mucho antes de la barrera.</p>
+            </div>
+
+            <div className="mt-10 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
               {[
                 {
                   icon: ShieldIcon,
@@ -244,13 +242,13 @@ export default function Home() {
               ].map(({ icon: Icon, title, text }) => (
                 <div
                   key={title}
-                  className="rounded-2xl bg-surface p-6 shadow-lg shadow-ink/5 ring-1 ring-ink/10"
+                  className="feature-card ui-card"
                 >
-                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-accent/10 text-accent">
+                  <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-accent/10 text-link">
                     <Icon className="h-6 w-6" />
                   </div>
 
-                  <h3 className="mt-4 font-bold text-ink">{title}</h3>
+                  <h3 className="mt-6 text-[15px] font-semibold text-ink">{title}</h3>
 
                   <p className="mt-2 text-sm text-ink/60">{text}</p>
                 </div>
@@ -259,11 +257,13 @@ export default function Home() {
           </div>
         </section>
 
-        <section id="como-funciona" className="py-20">
-          <div className="mx-auto max-w-4xl px-4 sm:px-6">
-            <h2 className="text-center text-3xl font-extrabold tracking-tight text-ink">
-              Cómo funciona
-            </h2>
+        <section id="como-funciona" className="border-t border-ink/10 bg-surface py-16 sm:py-24">
+          <div className="mx-auto max-w-6xl px-4 sm:px-6">
+            <div className="section-heading">
+              <p className="eyebrow">ASÍ DE SIMPLE</p>
+              <h2>Cómo funciona</h2>
+              <p>De tus datos a tu cochera, en tres pasos.</p>
+            </div>
 
             <div className="mt-12 grid grid-cols-1 gap-8 sm:grid-cols-3">
               {[
@@ -283,12 +283,12 @@ export default function Home() {
                   text: "Portería valida que tenés un lugar confirmado para ese día.",
                 },
               ].map(({ step, title, text }) => (
-                <div key={step} className="text-center">
-                  <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-brand text-sm font-bold text-white">
+                <div key={step} className="step-card">
+                  <div className="step-number">
                     {step}
                   </div>
 
-                  <h3 className="mt-4 font-bold text-ink">{title}</h3>
+                  <h3 className="mt-5 font-semibold text-ink">{title}</h3>
 
                   <p className="mt-2 text-sm text-ink/60">{text}</p>
                 </div>
@@ -298,8 +298,11 @@ export default function Home() {
         </section>
       </main>
 
-      <footer className="border-t border-ink/10 py-8 text-center text-sm text-ink/50">
-        AparcAR — Proyecto Integral de Desarrollo, UCAio.
+      <footer className="border-t border-ink/10 px-4 py-7 sm:px-6">
+        <div className="landing-footer mx-auto max-w-6xl text-xs text-ink/60">
+          <p className="font-medium text-ink">Tu lugar, antes de llegar.</p>
+          <p>AparcAR — Proyecto Integral de Desarrollo, UCAio.</p>
+        </div>
       </footer>
     </div>
   );

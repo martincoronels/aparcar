@@ -9,6 +9,7 @@ import { toast } from "sonner";
 
 import api from "@/app/api";
 import LogoutButton from "@/components/LogoutButton";
+import DashboardHeader from "@/components/DashboardHeader";
 
 const createUserSchema = z.object({
   nombre: z
@@ -50,10 +51,10 @@ const editUserSchema = z.object({
 });
 
 const inputClasses =
-  "block w-full rounded-xl border-0 py-3 px-4 text-ink bg-surface ring-1 ring-inset ring-ink/20 placeholder:text-ink/40 focus:z-10 focus:ring-2 focus:ring-inset focus:ring-accent sm:text-sm sm:leading-6 transition-all";
+  "ui-input";
 
 const labelClasses =
-  "block text-sm font-medium text-ink/70 mb-1";
+  "ui-label";
 
 export default function UserManagement() {
   const [users, setUsers] = useState([]);
@@ -238,17 +239,16 @@ export default function UserManagement() {
   };
 
   return (
-    <div className="min-h-screen bg-bg px-4 py-12 sm:px-6 lg:px-8">
-      <div className="mx-auto max-w-7xl">
-        <div className="mb-8 flex flex-wrap items-center justify-between gap-3">
+    <div className="dashboard-shell">
+      <div className="dashboard-container">
+        <DashboardHeader actions={<LogoutButton />}>
           <Link
             href="/dashboard-admin"
-            className="rounded-xl bg-surface px-4 py-2 text-sm font-semibold text-ink ring-1 ring-inset ring-ink/20 transition-colors hover:bg-ink/5"
+            className="dashboard-back-link"
           >
             ← Volver al panel
           </Link>
-          <LogoutButton />
-        </div>
+        </DashboardHeader>
 
         <div className="mb-8">
           <h1 className="text-3xl font-extrabold tracking-tight text-ink">
@@ -261,9 +261,9 @@ export default function UserManagement() {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
-          <div className="lg:col-span-1">
-            <div className="rounded-2xl bg-surface p-6 shadow-xl shadow-ink/10 ring-1 ring-ink/15">
+        <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
+          <div className="xl:col-span-1">
+            <div className="ui-card p-6">
               <h2 className="text-xl font-bold text-ink">
                 Nuevo usuario
               </h2>
@@ -386,7 +386,7 @@ export default function UserManagement() {
                 <button
                   type="submit"
                   disabled={isCreating}
-                  className="flex w-full justify-center rounded-xl bg-accent px-3 py-3 text-sm font-semibold text-white transition-all hover:bg-brand disabled:cursor-not-allowed disabled:opacity-50"
+                  className="ui-primary flex w-full justify-center px-3 py-3 text-sm font-semibold transition-all disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {isCreating
                     ? "Creando..."
@@ -396,9 +396,9 @@ export default function UserManagement() {
             </div>
           </div>
 
-          <div className="lg:col-span-2">
+          <div className="xl:col-span-2">
             {editingUser && (
-              <div className="mb-8 rounded-2xl bg-surface p-6 shadow-xl shadow-ink/10 ring-1 ring-ink/15">
+              <div className="mb-8 ui-card p-6">
                 <div className="mb-6 flex items-start justify-between gap-4">
                   <div>
                     <h2 className="text-xl font-bold text-ink">
@@ -522,7 +522,7 @@ export default function UserManagement() {
                   <button
                     type="submit"
                     disabled={isEditing}
-                    className="rounded-xl bg-accent px-5 py-3 text-sm font-semibold text-white transition-all hover:bg-brand disabled:cursor-not-allowed disabled:opacity-50"
+                    className="ui-primary px-5 py-3 text-sm font-semibold transition-all disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {isEditing
                       ? "Guardando..."
@@ -532,7 +532,7 @@ export default function UserManagement() {
               </div>
             )}
 
-            <div className="overflow-hidden rounded-2xl bg-surface shadow-xl shadow-ink/10 ring-1 ring-ink/15">
+            <div className="overflow-hidden ui-card">
               <div className="border-b border-ink/10 px-6 py-5">
                 <h2 className="text-xl font-bold text-ink">
                   Usuarios
@@ -552,39 +552,39 @@ export default function UserManagement() {
                   No hay usuarios registrados.
                 </div>
               ) : (
-                <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-ink/10">
-                    <thead className="bg-surface">
-                      <tr>
-                        <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-ink/50">
+                <div className="responsive-table-scroll overflow-x-auto">
+                  <table role="table" className="responsive-table min-w-full divide-y divide-ink/10">
+                    <thead role="rowgroup" className="bg-surface">
+                      <tr role="row">
+                        <th scope="col" role="columnheader" className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-ink/50">
                           Usuario
                         </th>
 
-                        <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-ink/50">
+                        <th scope="col" role="columnheader" className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-ink/50">
                           Documento
                         </th>
 
-                        <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-ink/50">
+                        <th scope="col" role="columnheader" className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-ink/50">
                           Teléfono
                         </th>
 
-                        <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-ink/50">
+                        <th scope="col" role="columnheader" className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-ink/50">
                           Roles
                         </th>
 
-                        <th className="px-6 py-3 text-right text-xs font-semibold uppercase tracking-wider text-ink/50">
+                        <th scope="col" role="columnheader" className="px-6 py-3 text-right text-xs font-semibold uppercase tracking-wider text-ink/50">
                           Acciones
                         </th>
                       </tr>
                     </thead>
 
-                    <tbody className="divide-y divide-ink/10">
+                    <tbody role="rowgroup" className="divide-y divide-ink/10">
                       {users.map((user) => (
-                        <tr
+                        <tr role="row"
                           key={user.id}
                           className="transition-colors hover:bg-accent/5"
                         >
-                          <td className="whitespace-nowrap px-6 py-4">
+                          <td role="cell" data-label="Usuario" className="whitespace-nowrap px-6 py-4">
                             <p className="font-medium text-ink">
                               {user.nombre}
                             </p>
@@ -594,21 +594,21 @@ export default function UserManagement() {
                             </p>
                           </td>
 
-                          <td className="whitespace-nowrap px-6 py-4 text-sm text-ink/70">
+                          <td role="cell" data-label="Documento" className="whitespace-nowrap px-6 py-4 text-sm text-ink/70">
                             {user.documento || "—"}
                           </td>
 
-                          <td className="whitespace-nowrap px-6 py-4 text-sm text-ink/70">
+                          <td role="cell" data-label="Teléfono" className="whitespace-nowrap px-6 py-4 text-sm text-ink/70">
                             {user.telefono || "—"}
                           </td>
 
-                          <td className="px-6 py-4">
+                          <td role="cell" data-label="Roles" className="px-6 py-4">
                             <div className="flex flex-wrap gap-2">
                               {user.authorities?.map(
                                 (authority) => (
                                   <span
                                     key={authority}
-                                    className="rounded-full bg-accent/10 px-2.5 py-1 text-xs font-medium text-accent ring-1 ring-inset ring-accent/20"
+                                    className="rounded-full bg-accent/10 px-2.5 py-1 text-xs font-medium text-link ring-1 ring-inset ring-accent/20"
                                   >
                                     {authority}
                                   </span>
@@ -617,7 +617,7 @@ export default function UserManagement() {
                             </div>
                           </td>
 
-                          <td className="px-6 py-4">
+                          <td role="cell" data-label="Acciones" className="px-6 py-4">
                             <div className="flex justify-end gap-2">
                               {!user.isActive && (
                                 <button
@@ -625,7 +625,7 @@ export default function UserManagement() {
                                   onClick={() =>
                                     activateUser(user)
                                   }
-                                  className="rounded-lg bg-accent px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-brand"
+                                  className="ui-primary rounded-lg px-3 py-2 text-xs font-semibold transition-colors"
                                 >
                                   Activar
                                 </button>
@@ -646,7 +646,7 @@ export default function UserManagement() {
                                 onClick={() =>
                                   deleteUser(user)
                                 }
-                                className="rounded-lg bg-red-50 px-3 py-2 text-xs font-semibold text-red-600 ring-1 ring-inset ring-red-200 transition-colors hover:bg-red-100"
+                                className="rounded-lg bg-red-50 px-3 py-2 text-xs font-semibold text-red-600 ring-1 ring-inset ring-red-200 transition-colors hover:bg-red-100 dark:bg-red-500/10 dark:text-red-300 dark:ring-red-400/20 dark:border-red-400/25 dark:hover:bg-red-500/20"
                               >
                                 Eliminar
                               </button>

@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 
 import { useAuthStore } from "@/store/authStore";
+import DashboardIcon from "@/components/DashboardIcon";
 
 export default function LogoutButton() {
   const logout = useAuthStore((state) => state.logout);
@@ -17,9 +18,11 @@ export default function LogoutButton() {
     <button
       type="button"
       onClick={handleLogout}
-      className="rounded-xl bg-surface px-4 py-2 text-sm font-semibold text-ink ring-1 ring-inset ring-ink/20 transition-colors hover:bg-ink/5"
+      className="logout-button"
+      title="Cerrar sesión"
     >
-      Cerrar sesión
+      <DashboardIcon name="logout" />
+      <span className="logout-label">Cerrar sesión</span>
     </button>
   );
 }

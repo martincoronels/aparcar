@@ -14,8 +14,8 @@ const reservaSchema = z.object({
 });
 
 const inputClasses =
-  "block w-full rounded-xl border-0 py-3 px-4 text-ink bg-surface ring-1 ring-inset ring-ink/20 placeholder:text-ink/40 focus:z-10 focus:ring-2 focus:ring-inset focus:ring-accent sm:text-sm sm:leading-6 transition-all disabled:opacity-50";
-const labelClasses = "block text-sm font-medium text-ink/70 mb-1";
+  "ui-input";
+const labelClasses = "ui-label";
 const today = () => new Date().toISOString().split("T")[0];
 
 function EstadoBadge({ estado }) {
@@ -24,7 +24,7 @@ function EstadoBadge({ estado }) {
     <span
       className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
         isConfirmada
-          ? "bg-accent/10 text-accent ring-1 ring-inset ring-accent/30"
+          ? "bg-accent/10 text-link ring-1 ring-inset ring-accent/30"
           : "bg-ink/5 text-ink/50 ring-1 ring-inset ring-ink/10"
       }`}
     >
@@ -197,7 +197,7 @@ export default function ReservasContent({ modo = "user", onOcupacionCambiada, re
         </p>
       </div>
 
-      <div className="rounded-2xl bg-surface p-8 shadow-xl shadow-ink/10 ring-1 ring-ink/15">
+      <div className="ui-card p-8">
         {sinVehiculos ? (
           <p className="text-sm text-ink/60">
             Cargá al menos un vehículo en &quot;Mis datos&quot; para poder reservar.
@@ -246,7 +246,7 @@ export default function ReservasContent({ modo = "user", onOcupacionCambiada, re
                 </p>
               )}
               {esAdmin && vehiculoEncontrado && visitanteEncontrado && (
-                <p className="mt-1 text-sm text-accent">
+                <p className="mt-1 text-sm text-link">
                   {visitanteEncontrado.nombre} — {vehiculoEncontrado.tipo}
                 </p>
               )}
@@ -296,7 +296,7 @@ export default function ReservasContent({ modo = "user", onOcupacionCambiada, re
             <button
               type="submit"
               disabled={isSubmitting || !cocheraId}
-              className="group relative flex w-full justify-center rounded-xl bg-accent px-3 py-3 text-sm font-semibold text-white hover:bg-brand focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              className="ui-primary group relative flex w-full justify-center px-3 py-3 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isSubmitting ? "Reservando..." : "Confirmar reserva"}
             </button>
@@ -309,7 +309,7 @@ export default function ReservasContent({ modo = "user", onOcupacionCambiada, re
         <h2 className="text-xl font-bold text-ink mb-4">
           {esAdmin ? "Todas las reservas" : "Mis reservas"}
         </h2>
-        <div className="rounded-2xl bg-surface shadow-xl shadow-ink/10 ring-1 ring-ink/15 overflow-hidden">
+        <div className="ui-card overflow-hidden">
           {loadingReservas ? (
             <div className="flex items-center justify-center p-8">
               <div className="h-6 w-6 animate-spin rounded-full border-4 border-accent border-t-transparent" />
@@ -319,7 +319,7 @@ export default function ReservasContent({ modo = "user", onOcupacionCambiada, re
               {esAdmin ? "Todavía no hay reservas cargadas." : "Todavía no tenés reservas."}
             </p>
           ) : (
-            <ul className="divide-y divide-ink/10">
+            <ul className="reservation-list divide-y divide-ink/10">
               {reservas.map((r) => (
                 <li key={r.id} className="flex flex-wrap items-center justify-between gap-2 p-4">
                   <div>
@@ -336,7 +336,7 @@ export default function ReservasContent({ modo = "user", onOcupacionCambiada, re
                       <button
                         type="button"
                         onClick={() => cancelarReserva(r)}
-                        className="rounded-lg border border-red-200 px-2.5 py-1 text-xs font-semibold text-red-600 hover:bg-red-50 transition-colors"
+                        className="rounded-lg border border-red-200 px-2.5 py-1 text-xs font-semibold text-red-600 hover:bg-red-50 transition-colors dark:bg-red-500/10 dark:text-red-300 dark:ring-red-400/20 dark:border-red-400/25 dark:hover:bg-red-500/20"
                       >
                         Cancelar
                       </button>

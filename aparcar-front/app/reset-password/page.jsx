@@ -8,6 +8,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { toast } from "sonner";
 import api from "../api";
+import AuthLayout from "@/components/AuthLayout";
 
 const resetSchema = z
   .object({
@@ -53,64 +54,65 @@ function ResetPasswordForm() {
   };
 
   return (
-    <div className="w-full max-w-md space-y-8 rounded-2xl bg-surface p-8 shadow-xl shadow-ink/10 ring-1 ring-ink/15">
+    <div className="auth-card ui-card space-y-8">
       <div>
-        <h2 className="mt-6 text-center text-3xl font-extrabold tracking-tight text-ink">
+        <p className="eyebrow">UN NUEVO ACCESO</p>
+        <h2 className="mt-3 text-3xl tracking-tight text-ink">
           Restablecer contraseña
         </h2>
-        <p className="mt-2 text-center text-sm text-ink/60">
+        <p className="mt-3 text-sm text-ink/60">
           Ingresá el código que recibiste por correo y tu nueva contraseña
         </p>
       </div>
 
       <form className="mt-8 space-y-4" onSubmit={handleSubmit(onSubmit)}>
         <div>
-          <label htmlFor="email" className="sr-only">Correo electrónico</label>
+          <label htmlFor="email" className="ui-label">Correo electrónico</label>
           <input
             id="email"
             type="email"
             autoComplete="email"
             {...register("email")}
-            className="relative block w-full rounded-xl border-0 py-3 px-4 text-ink bg-surface ring-1 ring-inset ring-ink/20 placeholder:text-ink/40 focus:z-10 focus:ring-2 focus:ring-inset focus:ring-accent sm:text-sm sm:leading-6 transition-all"
+            className="ui-input"
             placeholder="Correo electrónico"
           />
           {errors.email && <p className="mt-1 text-sm text-red-500">{errors.email.message}</p>}
         </div>
 
         <div>
-          <label htmlFor="otp" className="sr-only">Código</label>
+          <label htmlFor="otp" className="ui-label">Código</label>
           <input
             id="otp"
             type="text"
             inputMode="numeric"
             {...register("otp")}
-            className="relative block w-full rounded-xl border-0 py-3 px-4 text-ink bg-surface ring-1 ring-inset ring-ink/20 placeholder:text-ink/40 focus:z-10 focus:ring-2 focus:ring-inset focus:ring-accent sm:text-sm sm:leading-6 transition-all"
+            className="ui-input"
             placeholder="Código recibido por correo"
           />
           {errors.otp && <p className="mt-1 text-sm text-red-500">{errors.otp.message}</p>}
         </div>
 
         <div>
-          <label htmlFor="newPassword" className="sr-only">Nueva contraseña</label>
+          <label htmlFor="newPassword" className="ui-label">Nueva contraseña</label>
           <input
             id="newPassword"
             type="password"
             autoComplete="new-password"
             {...register("newPassword")}
-            className="relative block w-full rounded-xl border-0 py-3 px-4 text-ink bg-surface ring-1 ring-inset ring-ink/20 placeholder:text-ink/40 focus:z-10 focus:ring-2 focus:ring-inset focus:ring-accent sm:text-sm sm:leading-6 transition-all"
+            className="ui-input"
             placeholder="Nueva contraseña"
           />
           {errors.newPassword && <p className="mt-1 text-sm text-red-500">{errors.newPassword.message}</p>}
         </div>
 
         <div>
-          <label htmlFor="confirmPassword" className="sr-only">Confirmar contraseña</label>
+          <label htmlFor="confirmPassword" className="ui-label">Confirmar contraseña</label>
           <input
             id="confirmPassword"
             type="password"
             autoComplete="new-password"
             {...register("confirmPassword")}
-            className="relative block w-full rounded-xl border-0 py-3 px-4 text-ink bg-surface ring-1 ring-inset ring-ink/20 placeholder:text-ink/40 focus:z-10 focus:ring-2 focus:ring-inset focus:ring-accent sm:text-sm sm:leading-6 transition-all"
+            className="ui-input"
             placeholder="Confirmar nueva contraseña"
           />
           {errors.confirmPassword && <p className="mt-1 text-sm text-red-500">{errors.confirmPassword.message}</p>}
@@ -120,7 +122,7 @@ function ResetPasswordForm() {
           <button
             type="submit"
             disabled={isSubmitting}
-            className="group relative flex w-full justify-center rounded-xl bg-accent px-3 py-3 text-sm font-semibold text-white hover:bg-brand focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            className="ui-primary group relative flex w-full justify-center px-3 py-3 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent transition-all disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isSubmitting ? "Actualizando..." : "Restablecer contraseña"}
           </button>
@@ -128,7 +130,7 @@ function ResetPasswordForm() {
       </form>
 
       <div className="text-center text-sm">
-        <Link href="/login" className="font-medium text-accent hover:text-ink transition-colors">
+        <Link href="/login" className="font-medium text-link hover:text-ink transition-colors">
           Volver al inicio de sesión
         </Link>
       </div>
@@ -138,12 +140,12 @@ function ResetPasswordForm() {
 
 export default function ResetPasswordPage() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-bg px-4 py-12 sm:px-6 lg:px-8">
+    <AuthLayout>
       <Suspense fallback={
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-accent border-t-transparent" />
       }>
         <ResetPasswordForm />
       </Suspense>
-    </div>
+    </AuthLayout>
   );
 }

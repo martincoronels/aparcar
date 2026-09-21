@@ -7,7 +7,7 @@ export default function NotFound() {
       <p className="mt-4 text-ink/60">La ruta a la que intentaste acceder no existe.</p>
       <Link
         href="/"
-        className="mt-8 rounded-xl bg-accent px-6 py-3 text-sm font-semibold text-white hover:bg-brand transition-all"
+        className="ui-primary mt-8 px-6 py-3 text-sm font-semibold transition-all"
       >
         Ir al inicio
       </Link>
