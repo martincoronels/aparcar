@@ -1,5 +1,29 @@
 # Mapa de archivos
 
+## Registro público de visitantes
+
+- `aparcar-front/app/register/page.jsx`: formulario público con datos personales,
+  contraseña y confirmación, errores de duplicados y enlace al login. Reutiliza
+  Axios, React Hook Form, Zod, Sonner y los colores de ambos temas.
+- `aparcar-front/app/login/page.jsx`: acceso al registro y envío de credenciales
+  HTTP Basic en UTF-8.
+- `AuthController` / `AuthService` / `RegistrationDto`: alta compartida pública y
+  administrativa, siempre activa y USER; no crea vehículos ni reservas.
+- `DevSecurityConfig` / `ProdSecurityConfig`: `/register` público, protegido por
+  el `RateLimitFilter` existente. `JWTValidationFilter` permite registrarse aunque
+  el navegador conserve un token vencido.
+- `VisitanteRepository`: consultas de identidad normalizadas; los usuarios nuevos
+  aparecen en el listado administrativo existente.
+- `005-identidad-visitante-unica.yaml`: índices PostgreSQL para email sin distinguir
+  mayúsculas y documento sin espacios extremos, también ante altas concurrentes.
+- `RegistrationTests.java` / `RegistrationFlowTests.java`: validaciones, permisos,
+  visibilidad administrativa, login real con JWT y límite de intentos.
+- `aparcar-front/test/register/page.test.jsx`: envío, validaciones, errores,
+  bloqueo durante el alta y visibilidad de contraseñas.
+
+Este flujo reemplaza la descripción histórica de `/register` como exclusivo de
+ADMIN que figura más abajo. Se conserva el alta operativa del admin con reserva.
+
 Referencia de qué hace cada archivo del proyecto, para no perderse en el repo. No incluye `node_modules/`, `.next/`, `target/`, `.git/` ni `.idea/` (carpetas generadas, no código del programa).
 
 Convenciones:

@@ -18,6 +18,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.dao.DataIntegrityViolationException;
 
 import java.time.Instant;
 import java.util.Optional;
@@ -46,6 +47,26 @@ public class AuthServiceTests {
 
     private final String existingEmail = "some@email.com";
     private final String notFoundEmail = "notfound@email.com";
+
+    @Test
+    void concurrentEmailConflictReturnsValidationError() {
+        when(visitanteRepository.existsByEmail(existingEmail)).thenReturn(false, true);
+        when(visitanteRepository.save(any(Visitante.class)))
+                .thenThrow(new DataIntegrityViolationException("unique email"));
+        ValidationException error = assertThrows(ValidationException.class, () ->
+                authService.register(new RegistrationDto("Test", "30111222", existingEmail, "password123", null)));
+        assertEquals("Ya existe una cuenta asociada a ese email.", error.getMessage());
+    }
+
+    @Test
+    void concurrentDocumentConflictReturnsValidationError() {
+        when(visitanteRepository.existsByDocumento("30111222")).thenReturn(false, true);
+        when(visitanteRepository.save(any(Visitante.class)))
+                .thenThrow(new DataIntegrityViolationException("unique document"));
+        ValidationException error = assertThrows(ValidationException.class, () ->
+                authService.register(new RegistrationDto("Test", "30111222", existingEmail, "password123", null)));
+        assertEquals("Ya existe un visitante con ese documento.", error.getMessage());
+    }
 
     @Test
     @DisplayName("register throws ValidationException when email already registered")

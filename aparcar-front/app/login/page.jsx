@@ -33,7 +33,7 @@ export default function LoginPage() {
       // devuelve el JWT en el header "Authorization" de la respuesta (no en
       // el body). Por eso acá no usamos el interceptor de `api` para el
       // Authorization saliente: lo seteamos manualmente como Basic.
-      const credentials = btoa(`${data.email}:${data.password}`);
+      const credentials = btoa(String.fromCharCode(...new TextEncoder().encode(`${data.email}:${data.password}`)));
       const response = await api.post(
         "/login",
         {},
@@ -87,7 +87,7 @@ export default function LoginPage() {
             Iniciar sesión
           </h2>
           <p className="mt-2 text-center text-sm text-[#002147]/60">
-            AparcAR — acceso para personal interno
+            Accedé a tu cuenta de AparcAR
           </p>
         </div>
 
@@ -144,6 +144,12 @@ export default function LoginPage() {
             </button>
           </div>
         </form>
+        <p className="border-t border-[#002147]/10 pt-6 text-center text-sm text-[#002147]/60">
+          ¿Todavía no tenés cuenta?{" "}
+          <Link href="/register" className="font-semibold text-[#0cb7f2] hover:text-[#002147] transition-colors">
+            Registrate
+          </Link>
+        </p>
       </div>
     </div>
   );

@@ -15,10 +15,13 @@ import java.util.UUID;
  */
 @Repository
 public interface VisitanteRepository extends JpaRepository<Visitante, UUID> {
+    @Query("SELECT v FROM Visitante v WHERE LOWER(TRIM(v.email)) = LOWER(TRIM(:email))")
     Optional<Visitante> findByEmail(String email);
 
+    @Query("SELECT COUNT(v) > 0 FROM Visitante v WHERE LOWER(TRIM(v.email)) = LOWER(TRIM(:email))")
     boolean existsByEmail(String email);
 
+    @Query("SELECT COUNT(v) > 0 FROM Visitante v WHERE TRIM(v.documento) = TRIM(:documento)")
     boolean existsByDocumento(String documento);
 
     @Query("SELECT v.email FROM Visitante v WHERE v.isActive = false")
