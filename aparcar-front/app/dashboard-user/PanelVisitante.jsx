@@ -17,9 +17,9 @@ export default function PanelVisitante() {
   const [vehiculosKey, setVehiculosKey] = useState(0);
 
   return (
-    <>
+    <div className="visitor-dashboard">
       <MiPerfilContent onVehiculosCambiaron={() => setVehiculosKey((k) => k + 1)} />
       <ReservasContent modo="user" refreshKey={vehiculosKey} />
-    </>
+    </div>
   );
 }

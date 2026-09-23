@@ -46,8 +46,8 @@ const vehiculoSchema = z
   });
 
 const inputClasses =
-  "block w-full rounded-xl border-0 py-3 px-4 text-ink bg-surface ring-1 ring-inset ring-ink/20 placeholder:text-ink/40 focus:z-10 focus:ring-2 focus:ring-inset focus:ring-accent sm:text-sm sm:leading-6 transition-all";
-const labelClasses = "block text-sm font-medium text-ink/70 mb-1";
+  "ui-input";
+const labelClasses = "ui-label";
 
 // Ya no existe el paso de "cargá tus datos": la cuenta y el visitante son la
 // misma entidad, así que nombre y documento vienen dados desde el alta y acá
@@ -196,8 +196,8 @@ export default function MiPerfilContent({ onVehiculosCambiaron }) {
       <p className="text-sm text-ink/60 mb-8">Tus datos y vehículos registrados.</p>
 
       <div className="space-y-8">
-        <div className="rounded-2xl bg-surface p-6 shadow-xl shadow-ink/10 ring-1 ring-ink/15">
-          <div className="flex items-start justify-between gap-4">
+        <div className="ui-card p-6">
+          <div className="profile-heading flex items-start justify-between gap-4">
             <div>
               <h2 className="text-lg font-bold text-ink">{visitante.nombre}</h2>
               <p className="text-sm text-ink/60">
@@ -207,7 +207,7 @@ export default function MiPerfilContent({ onVehiculosCambiaron }) {
               </p>
             </div>
 
-            <div className="flex shrink-0 gap-2">
+            <div className="profile-actions flex shrink-0 gap-2">
               {!editandoPerfil && (
                 <button
                   type="button"
@@ -252,7 +252,7 @@ export default function MiPerfilContent({ onVehiculosCambiaron }) {
                 <button
                   type="submit"
                   disabled={editPerfilForm.formState.isSubmitting}
-                  className="rounded-xl bg-accent px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand transition-all disabled:opacity-50"
+                  className="ui-primary px-4 py-2.5 text-sm font-semibold transition-all disabled:opacity-50"
                 >
                   Guardar cambios
                 </button>
@@ -325,7 +325,7 @@ export default function MiPerfilContent({ onVehiculosCambiaron }) {
                 <button
                   type="submit"
                   disabled={passwordForm.formState.isSubmitting}
-                  className="rounded-xl bg-accent px-4 py-2.5 text-sm font-semibold text-white hover:bg-brand transition-all disabled:opacity-50"
+                  className="ui-primary px-4 py-2.5 text-sm font-semibold transition-all disabled:opacity-50"
                 >
                   Guardar contraseña
                 </button>
@@ -341,7 +341,7 @@ export default function MiPerfilContent({ onVehiculosCambiaron }) {
           )}
         </div>
 
-        <div className="rounded-2xl bg-surface p-6 shadow-xl shadow-ink/10 ring-1 ring-ink/15">
+        <div className="ui-card p-6">
           <h2 className="text-lg font-bold text-ink mb-4">Mis vehículos</h2>
 
           {vehiculos.length === 0 ? (
@@ -352,7 +352,7 @@ export default function MiPerfilContent({ onVehiculosCambiaron }) {
                 editandoVehiculoId === v.id ? (
                   <li key={v.id} className="py-3">
                     <form
-                      className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_auto_auto_auto] sm:items-start"
+                      className="vehicle-form flex flex-wrap items-start gap-2"
                       onSubmit={editVehiculoForm.handleSubmit(onEditarVehiculo)}
                     >
                       <div>
@@ -373,7 +373,7 @@ export default function MiPerfilContent({ onVehiculosCambiaron }) {
                       </select>
                       <button
                         type="submit"
-                        className="rounded-xl bg-accent px-4 py-3 text-sm font-semibold text-white hover:bg-brand transition-all"
+                        className="ui-primary px-4 py-3 text-sm font-semibold transition-all"
                       >
                         Guardar
                       </button>
@@ -387,7 +387,7 @@ export default function MiPerfilContent({ onVehiculosCambiaron }) {
                     </form>
                   </li>
                 ) : (
-                  <li key={v.id} className="py-2 flex items-center justify-between text-sm">
+                  <li key={v.id} className="flex flex-wrap items-center justify-between gap-3 py-4 text-sm">
                     <span className="font-medium text-ink">{v.patente}</span>
                     <span className="text-ink/60">{v.tipo}</span>
                     <div className="flex gap-2">
@@ -401,7 +401,7 @@ export default function MiPerfilContent({ onVehiculosCambiaron }) {
                       <button
                         type="button"
                         onClick={() => eliminarVehiculo(v)}
-                        className="rounded-lg border border-red-200 px-2.5 py-1 text-xs font-semibold text-red-600 hover:bg-red-50 transition-colors"
+                        className="rounded-lg border border-red-200 px-2.5 py-1 text-xs font-semibold text-red-600 hover:bg-red-50 transition-colors dark:bg-red-500/10 dark:text-red-300 dark:ring-red-400/20 dark:border-red-400/25 dark:hover:bg-red-500/20"
                       >
                         Eliminar
                       </button>
@@ -413,7 +413,7 @@ export default function MiPerfilContent({ onVehiculosCambiaron }) {
           )}
 
           <form
-            className="grid grid-cols-1 sm:grid-cols-[1fr_auto_auto] gap-3 sm:items-start"
+            className="vehicle-form flex flex-wrap items-start gap-3"
             onSubmit={vehiculoForm.handleSubmit(onAgregarVehiculo)}
           >
             <div>
@@ -434,7 +434,7 @@ export default function MiPerfilContent({ onVehiculosCambiaron }) {
             <button
               type="submit"
               disabled={vehiculoForm.formState.isSubmitting}
-              className="rounded-xl bg-accent px-4 py-3 text-sm font-semibold text-white hover:bg-brand transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              className="ui-primary px-4 py-3 text-sm font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Agregar
             </button>

@@ -34,7 +34,7 @@ export default function UnauthorizedPage() {
 
           <Link
             href="/"
-            className="rounded-xl bg-accent px-6 py-3 text-sm font-semibold text-white hover:bg-brand transition-all"
+            className="ui-primary px-6 py-3 text-sm font-semibold transition-all"
           >
             Ir al inicio
           </Link>

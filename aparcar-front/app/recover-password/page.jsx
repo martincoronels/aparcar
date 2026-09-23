@@ -8,6 +8,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { toast } from "sonner";
 import api from "../api";
+import AuthLayout from "@/components/AuthLayout";
 
 const recoverSchema = z.object({
   email: z.string().email("Ingresa un correo válido"),
@@ -42,20 +43,21 @@ export default function RecoverPasswordPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-bg px-4 py-12 sm:px-6 lg:px-8">
-      <div className="w-full max-w-md space-y-8 rounded-2xl bg-surface p-8 shadow-xl shadow-ink/10 ring-1 ring-ink/15">
+    <AuthLayout>
+      <div className="auth-card ui-card space-y-8">
         <div>
-          <h2 className="mt-6 text-center text-3xl font-extrabold tracking-tight text-ink">
+          <p className="eyebrow">VOLVÉ A TU CUENTA</p>
+          <h2 className="mt-3 text-3xl tracking-tight text-ink">
             Recuperar contraseña
           </h2>
-          <p className="mt-2 text-center text-sm text-ink/60">
+          <p className="mt-3 text-sm text-ink/60">
             Ingresa tu correo para recibir las instrucciones
           </p>
         </div>
 
         {success ? (
           <div className="rounded-lg bg-accent/10 p-4 border border-accent/50">
-            <p className="text-sm text-accent text-center">
+            <p className="text-sm text-link text-center">
               Si el correo existe, vas a recibir un código para restablecer tu contraseña. Te redirigimos...
             </p>
           </div>
@@ -63,7 +65,7 @@ export default function RecoverPasswordPage() {
           <form className="mt-8 space-y-6" onSubmit={handleSubmit(onSubmit)}>
             <div className="space-y-4">
               <div>
-                <label htmlFor="email-address" className="sr-only">
+                <label htmlFor="email-address" className="ui-label">
                   Correo electrónico
                 </label>
                 <input
@@ -71,7 +73,7 @@ export default function RecoverPasswordPage() {
                   type="email"
                   autoComplete="email"
                   {...register("email")}
-                  className="relative block w-full rounded-xl border-0 py-3 px-4 text-ink bg-surface ring-1 ring-inset ring-ink/20 placeholder:text-ink/40 focus:z-10 focus:ring-2 focus:ring-inset focus:ring-accent sm:text-sm sm:leading-6 transition-all"
+                  className="ui-input"
                   placeholder="Correo electrónico"
                 />
                 {errors.email && <p className="mt-1 text-sm text-red-500">{errors.email.message}</p>}
@@ -82,7 +84,7 @@ export default function RecoverPasswordPage() {
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="group relative flex w-full justify-center rounded-xl bg-accent px-3 py-3 text-sm font-semibold text-white hover:bg-brand focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                className="ui-primary group relative flex w-full justify-center px-3 py-3 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isSubmitting ? "Enviando..." : "Enviar enlace"}
               </button>
@@ -93,12 +95,12 @@ export default function RecoverPasswordPage() {
         <div className="text-center mt-4 text-sm">
           <Link
             href="/login"
-            className="font-medium text-accent hover:text-ink transition-colors"
+            className="font-medium text-link hover:text-ink transition-colors"
           >
             Volver al inicio de sesión
           </Link>
         </div>
       </div>
-    </div>
+    </AuthLayout>
   );
 }

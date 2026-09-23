@@ -32,8 +32,8 @@ const visitanteSchema = z
   });
 
 const inputClasses =
-  "block w-full rounded-xl border-0 py-3 px-4 text-ink bg-surface ring-1 ring-inset ring-ink/20 placeholder:text-ink/40 focus:z-10 focus:ring-2 focus:ring-inset focus:ring-accent sm:text-sm sm:leading-6 transition-all disabled:opacity-50";
-const labelClasses = "block text-sm font-medium text-ink/70 mb-1";
+  "ui-input";
+const labelClasses = "ui-label";
 const hoy = () => new Date().toISOString().split("T")[0];
 
 // Da de alta un visitante: crea la cuenta, su vehículo y la reserva para la
@@ -105,7 +105,8 @@ export default function VisitantesContent({ onAltaCreada }) {
   };
 
   return (
-    <div className="mx-auto max-w-2xl">
+    <div className="visitor-section">
+      <p className="eyebrow mb-3">RECEPCIÓN DE VISITANTES</p>
       <h1 className="text-3xl font-extrabold tracking-tight text-ink mb-2">
         Nuevo visitante
       </h1>
@@ -114,10 +115,10 @@ export default function VisitantesContent({ onAltaCreada }) {
         cuenta creada y su documento como contraseña inicial.
       </p>
 
-      <div className="rounded-2xl bg-surface p-8 shadow-xl shadow-ink/10 ring-1 ring-ink/15">
+      <div className="ui-card p-8">
         <form className="space-y-6" onSubmit={handleSubmit(onSubmit)}>
             <div>
-              <h2 className="text-sm font-semibold text-accent uppercase tracking-wide mb-4">
+              <h2 className="text-sm font-semibold text-link uppercase tracking-wide mb-4">
                 Datos del visitante
               </h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -144,7 +145,7 @@ export default function VisitantesContent({ onAltaCreada }) {
             </div>
 
             <div>
-              <h2 className="text-sm font-semibold text-accent uppercase tracking-wide mb-4">
+              <h2 className="text-sm font-semibold text-link uppercase tracking-wide mb-4">
                 Vehículo y cochera
               </h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -196,7 +197,7 @@ export default function VisitantesContent({ onAltaCreada }) {
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="group relative flex w-full justify-center rounded-xl bg-accent px-3 py-3 text-sm font-semibold text-white hover:bg-brand focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                className="ui-primary group relative flex w-full justify-center px-3 py-3 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isSubmitting ? "Guardando..." : "Dar de alta y reservar"}
               </button>
