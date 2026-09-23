@@ -15,8 +15,10 @@ import com.aparcar.api.repository.ReservaRepository;
 import com.aparcar.api.service.ICocheraService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -44,8 +46,60 @@ public class CocheraService implements ICocheraService {
     }
 
     @Override
-    public List<CocheraResponseDto> listar() {
-        return cocheraRepository.findAll().stream().map(this::toResponseDto).toList();
+    @Transactional
+    public List<CocheraResponseDto> crearEnLote(List<CocheraRequestDto> dtos) {
+        if (dtos == null || dtos.isEmpty()) {
+            throw new ValidationException("La lista de cocheras no puede estar vacia.");
+        }
+
+        // Todo-o-nada: se valida el lote entero ANTES de guardar nada. Si algo
+        // falla mas abajo igual quedariamos cubiertos por @Transactional
+        // (rollback automatico), pero validar primero evita guardar la mitad
+        // del lote antes de descubrir que la ultima cochera esta repetida.
+        Set<String> numerosEnLote = new HashSet<>();
+        for (CocheraRequestDto dto : dtos) {
+            if (!numerosEnLote.add(dto.getNumero())) {
+                throw new ValidationException(
+                        "El numero '%s' esta repetido dentro del lote.".formatted(dto.getNumero()));
+            }
+            if (cocheraRepository.existsByNumero(dto.getNumero())) {
+                throw new ValidationException(
+                        "Ya existe una cochera con el numero '%s'.".formatted(dto.getNumero()));
+            }
+        }
+
+        List<Cochera> cocheras = dtos.stream().map(dto -> {
+            Cochera cochera = new Cochera();
+            cochera.setNumero(dto.getNumero());
+            cochera.setSector(dto.getSector());
+            cochera.setTipo(dto.getTipo());
+            cochera.setEstado(dto.getEstado());
+            return cochera;
+        }).toList();
+
+        return cocheraRepository.saveAll(cocheras).stream().map(this::toResponseDto).toList();
+    }
+
+    @Override
+    public List<String> listarSectores() {
+        return cocheraRepository.findDistinctSectores();
+    }
+
+    @Override
+    public List<CocheraResponseDto> listar(String sector, CocheraTipo tipo, CocheraEstado estado, LocalDate fecha) {
+        List<Cochera> cocheras = cocheraRepository.buscar(blankToNull(sector), tipo, estado);
+
+        if (fecha == null) {
+            return cocheras.stream().map(cochera -> toResponseDto(cochera, null)).toList();
+        }
+
+        Set<UUID> ocupadasEnFecha = reservaRepository.findByFechaAndEstado(fecha, ReservaEstado.CONFIRMADA).stream()
+                .map(reserva -> reserva.getCochera().getId())
+                .collect(Collectors.toSet());
+
+        return cocheras.stream()
+                .map(cochera -> toResponseDto(cochera, !ocupadasEnFecha.contains(cochera.getId())))
+                .toList();
     }
 
     @Override
@@ -96,7 +150,7 @@ public class CocheraService implements ICocheraService {
         return cocheraRepository.findByEstado(CocheraEstado.HABILITADA).stream()
                 .filter(cochera -> !ocupadas.contains(cochera.getId()))
                 .filter(cochera -> esCompatible(cochera.getTipo(), tipoVehiculo))
-                .map(this::toResponseDto)
+                .map(cochera -> toResponseDto(cochera, null))
                 .toList();
     }
 
@@ -104,6 +158,10 @@ public class CocheraService implements ICocheraService {
         List<Reserva> reservas = reservaRepository.findByCocheraIdAndEstado(cocheraId, ReservaEstado.CONFIRMADA);
         reservas.forEach(reserva -> reserva.setEstado(ReservaEstado.CANCELADA));
         reservaRepository.saveAll(reservas);
+    }
+
+    private String blankToNull(String value) {
+        return (value == null || value.isBlank()) ? null : value;
     }
 
     private Cochera buscarOLanzar(UUID id) {
@@ -119,11 +177,16 @@ public class CocheraService implements ICocheraService {
     }
 
     private CocheraResponseDto toResponseDto(Cochera cochera) {
+        return toResponseDto(cochera, null);
+    }
+
+    private CocheraResponseDto toResponseDto(Cochera cochera, Boolean disponibleEnFecha) {
         return new CocheraResponseDto(
                 cochera.getId(),
                 cochera.getNumero(),
                 cochera.getSector(),
                 cochera.getTipo(),
-                cochera.getEstado());
+                cochera.getEstado(),
+                disponibleEnFecha);
     }
 }

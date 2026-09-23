@@ -2,6 +2,8 @@ package com.aparcar.api.controller;
 
 import com.aparcar.api.dto.reserva.CocheraRequestDto;
 import com.aparcar.api.dto.reserva.CocheraResponseDto;
+import com.aparcar.api.entity.reserva.CocheraEstado;
+import com.aparcar.api.entity.reserva.CocheraTipo;
 import com.aparcar.api.entity.reserva.VehiculoTipo;
 import com.aparcar.api.service.ICocheraService;
 import jakarta.validation.Valid;
@@ -34,9 +36,23 @@ public class CocheraController {
         return ResponseEntity.status(HttpStatus.CREATED).body(cocheraService.crear(dto));
     }
 
+    @PostMapping("/bulk")
+    public ResponseEntity<List<CocheraResponseDto>> crearEnLote(@Valid @RequestBody List<CocheraRequestDto> dtos) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(cocheraService.crearEnLote(dtos));
+    }
+
+    @GetMapping("/sectores")
+    public ResponseEntity<List<String>> listarSectores() {
+        return ResponseEntity.ok(cocheraService.listarSectores());
+    }
+
     @GetMapping
-    public ResponseEntity<List<CocheraResponseDto>> listar() {
-        return ResponseEntity.ok(cocheraService.listar());
+    public ResponseEntity<List<CocheraResponseDto>> listar(
+            @RequestParam(required = false) String sector,
+            @RequestParam(required = false) CocheraTipo tipo,
+            @RequestParam(required = false) CocheraEstado estado,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate fecha) {
+        return ResponseEntity.ok(cocheraService.listar(sector, tipo, estado, fecha));
     }
 
     @GetMapping("/{id}")

@@ -9,12 +9,17 @@ import { toast } from "sonner";
 
 import api from "@/app/api";
 import LogoutButton from "@/components/LogoutButton";
+import DashboardHeader from "@/components/DashboardHeader";
 
 const createUserSchema = z.object({
   nombre: z
     .string()
     .min(1, "El nombre es obligatorio")
     .max(100, "El nombre no puede superar los 100 caracteres"),
+
+  documento: z
+    .string()
+    .min(1, "El documento es obligatorio"),
 
   email: z
     .string()
@@ -34,6 +39,10 @@ const editUserSchema = z.object({
     .min(1, "El nombre es obligatorio")
     .max(100, "El nombre no puede superar los 100 caracteres"),
 
+  documento: z
+    .string()
+    .min(1, "El documento es obligatorio"),
+
   telefono: z.string().optional(),
 
   authorities: z
@@ -42,10 +51,10 @@ const editUserSchema = z.object({
 });
 
 const inputClasses =
-  "block w-full rounded-xl border-0 py-3 px-4 text-[#002147] bg-white ring-1 ring-inset ring-[#002147]/20 placeholder:text-[#002147]/40 focus:z-10 focus:ring-2 focus:ring-inset focus:ring-[#0cb7f2] sm:text-sm sm:leading-6 transition-all";
+  "ui-input";
 
 const labelClasses =
-  "block text-sm font-medium text-[#002147]/70 mb-1";
+  "ui-label";
 
 export default function UserManagement() {
   const [users, setUsers] = useState([]);
@@ -64,6 +73,7 @@ export default function UserManagement() {
     resolver: zodResolver(createUserSchema),
     defaultValues: {
       nombre: "",
+      documento: "",
       email: "",
       password: "",
       telefono: "",
@@ -82,6 +92,7 @@ export default function UserManagement() {
     resolver: zodResolver(editUserSchema),
     defaultValues: {
       nombre: "",
+      documento: "",
       telefono: "",
       authorities: [],
     },
@@ -112,6 +123,7 @@ export default function UserManagement() {
     try {
       await api.post("/register", {
         nombre: data.nombre,
+        documento: data.documento,
         email: data.email,
         password: data.password,
         telefono: data.telefono || null,
@@ -135,6 +147,7 @@ export default function UserManagement() {
 
     resetEdit({
       nombre: user.nombre,
+      documento: user.documento || "",
       telefono: user.telefono || "",
       authorities: user.authorities || [],
     });
@@ -145,6 +158,7 @@ export default function UserManagement() {
 
     resetEdit({
       nombre: "",
+      documento: "",
       telefono: "",
       authorities: [],
     });
@@ -158,6 +172,7 @@ export default function UserManagement() {
     try {
       await api.put(`/api/v1/usuarios/${editingUser.id}`, {
         nombre: data.nombre,
+        documento: data.documento,
         telefono: data.telefono || null,
         authorities: data.authorities,
       });
@@ -224,37 +239,38 @@ export default function UserManagement() {
   };
 
   return (
-    <div className="min-h-screen bg-white px-4 py-12 sm:px-6 lg:px-8">
-      <div className="mx-auto max-w-7xl">
-        <div className="mb-8 flex flex-wrap items-center justify-between gap-3">
+    <div className="dashboard-shell">
+      <div className="dashboard-container">
+        <DashboardHeader actions={<LogoutButton />}>
           <Link
             href="/dashboard-admin"
-            className="rounded-xl bg-white px-4 py-2 text-sm font-semibold text-[#002147] ring-1 ring-inset ring-[#002147]/20 transition-colors hover:bg-[#002147]/5"
+            className="dashboard-back-link"
           >
             ← Volver al panel
           </Link>
-          <LogoutButton />
-        </div>
+        </DashboardHeader>
 
         <div className="mb-8">
-          <h1 className="text-3xl font-extrabold tracking-tight text-[#002147]">
+          <h1 className="text-3xl font-extrabold tracking-tight text-ink">
             Gestión de usuarios
           </h1>
 
-          <p className="mt-2 text-sm text-[#002147]/60">
-            Administrá los usuarios internos que tienen acceso a AparcAR.
+          <p className="mt-2 text-sm text-ink/60">
+            Administrá las cuentas de AparcAR. Cada cuenta es un visitante: el
+            mismo registro sirve para iniciar sesión y para reservar.
           </p>
         </div>
 
-        <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
-          <div className="lg:col-span-1">
-            <div className="rounded-2xl bg-white p-6 shadow-xl shadow-[#002147]/10 ring-1 ring-[#002147]/15">
-              <h2 className="text-xl font-bold text-[#002147]">
+        <div className="grid grid-cols-1 gap-6 xl:grid-cols-3">
+          <div className="xl:col-span-1">
+            <div className="ui-card p-6">
+              <h2 className="text-xl font-bold text-ink">
                 Nuevo usuario
               </h2>
 
-              <p className="mt-1 mb-6 text-sm text-[#002147]/60">
-                Creá una nueva cuenta para personal interno.
+              <p className="mt-1 mb-6 text-sm text-ink/60">
+                Alta administrativa: acá elegís vos la contraseña. Nace con rol
+                USER y el rol se cambia editando la cuenta.
               </p>
 
               <form
@@ -279,6 +295,28 @@ export default function UserManagement() {
                   {createErrors.nombre && (
                     <p className="mt-1 text-sm text-red-500">
                       {createErrors.nombre.message}
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <label
+                    htmlFor="documento"
+                    className={labelClasses}
+                  >
+                    Documento
+                  </label>
+
+                  <input
+                    id="documento"
+                    {...registerCreate("documento")}
+                    className={inputClasses}
+                    placeholder="DNI / documento"
+                  />
+
+                  {createErrors.documento && (
+                    <p className="mt-1 text-sm text-red-500">
+                      {createErrors.documento.message}
                     </p>
                   )}
                 </div>
@@ -348,7 +386,7 @@ export default function UserManagement() {
                 <button
                   type="submit"
                   disabled={isCreating}
-                  className="flex w-full justify-center rounded-xl bg-[#0cb7f2] px-3 py-3 text-sm font-semibold text-white transition-all hover:bg-[#002147] disabled:cursor-not-allowed disabled:opacity-50"
+                  className="ui-primary flex w-full justify-center px-3 py-3 text-sm font-semibold transition-all disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   {isCreating
                     ? "Creando..."
@@ -358,16 +396,16 @@ export default function UserManagement() {
             </div>
           </div>
 
-          <div className="lg:col-span-2">
+          <div className="xl:col-span-2">
             {editingUser && (
-              <div className="mb-8 rounded-2xl bg-white p-6 shadow-xl shadow-[#002147]/10 ring-1 ring-[#002147]/15">
+              <div className="mb-8 ui-card p-6">
                 <div className="mb-6 flex items-start justify-between gap-4">
                   <div>
-                    <h2 className="text-xl font-bold text-[#002147]">
+                    <h2 className="text-xl font-bold text-ink">
                       Editar usuario
                     </h2>
 
-                    <p className="mt-1 text-sm text-[#002147]/60">
+                    <p className="mt-1 text-sm text-ink/60">
                       {editingUser.email}
                     </p>
                   </div>
@@ -375,7 +413,7 @@ export default function UserManagement() {
                   <button
                     type="button"
                     onClick={cancelEditing}
-                    className="rounded-lg px-3 py-2 text-sm font-medium text-[#002147]/60 transition-colors hover:bg-[#002147]/5 hover:text-[#002147]"
+                    className="rounded-lg px-3 py-2 text-sm font-medium text-ink/60 transition-colors hover:bg-ink/5 hover:text-ink"
                   >
                     Cancelar
                   </button>
@@ -409,6 +447,27 @@ export default function UserManagement() {
 
                     <div>
                       <label
+                        htmlFor="edit-documento"
+                        className={labelClasses}
+                      >
+                        Documento
+                      </label>
+
+                      <input
+                        id="edit-documento"
+                        {...registerEdit("documento")}
+                        className={inputClasses}
+                      />
+
+                      {editErrors.documento && (
+                        <p className="mt-1 text-sm text-red-500">
+                          {editErrors.documento.message}
+                        </p>
+                      )}
+                    </div>
+
+                    <div>
+                      <label
                         htmlFor="edit-telefono"
                         className={labelClasses}
                       >
@@ -430,23 +489,23 @@ export default function UserManagement() {
                     </span>
 
                     <div className="mt-2 flex flex-wrap gap-4">
-                      <label className="flex cursor-pointer items-center gap-2 text-sm text-[#002147]/70">
+                      <label className="flex cursor-pointer items-center gap-2 text-sm text-ink/70">
                         <input
                           type="checkbox"
                           value="USER"
                           {...registerEdit("authorities")}
-                          className="h-4 w-4 rounded border-[#002147]/20 bg-white accent-[#0cb7f2]"
+                          className="h-4 w-4 rounded border-ink/20 bg-surface accent-accent"
                         />
 
                         USER
                       </label>
 
-                      <label className="flex cursor-pointer items-center gap-2 text-sm text-[#002147]/70">
+                      <label className="flex cursor-pointer items-center gap-2 text-sm text-ink/70">
                         <input
                           type="checkbox"
                           value="ADMIN"
                           {...registerEdit("authorities")}
-                          className="h-4 w-4 rounded border-[#002147]/20 bg-white accent-[#0cb7f2]"
+                          className="h-4 w-4 rounded border-ink/20 bg-surface accent-accent"
                         />
 
                         ADMIN
@@ -463,7 +522,7 @@ export default function UserManagement() {
                   <button
                     type="submit"
                     disabled={isEditing}
-                    className="rounded-xl bg-[#0cb7f2] px-5 py-3 text-sm font-semibold text-white transition-all hover:bg-[#002147] disabled:cursor-not-allowed disabled:opacity-50"
+                    className="ui-primary px-5 py-3 text-sm font-semibold transition-all disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {isEditing
                       ? "Guardando..."
@@ -473,79 +532,83 @@ export default function UserManagement() {
               </div>
             )}
 
-            <div className="overflow-hidden rounded-2xl bg-white shadow-xl shadow-[#002147]/10 ring-1 ring-[#002147]/15">
-              <div className="border-b border-[#002147]/10 px-6 py-5">
-                <h2 className="text-xl font-bold text-[#002147]">
+            <div className="overflow-hidden ui-card">
+              <div className="border-b border-ink/10 px-6 py-5">
+                <h2 className="text-xl font-bold text-ink">
                   Usuarios
                 </h2>
 
-                <p className="mt-1 text-sm text-[#002147]/60">
+                <p className="mt-1 text-sm text-ink/60">
                   Cuentas registradas en el sistema.
                 </p>
               </div>
 
               {loadingUsers ? (
-                <div className="p-8 text-center text-sm text-[#002147]/60">
+                <div className="p-8 text-center text-sm text-ink/60">
                   Cargando usuarios...
                 </div>
               ) : users.length === 0 ? (
-                <div className="p-8 text-center text-sm text-[#002147]/60">
+                <div className="p-8 text-center text-sm text-ink/60">
                   No hay usuarios registrados.
                 </div>
               ) : (
-                <div className="overflow-x-auto">
-                  <table className="min-w-full divide-y divide-[#002147]/10">
-                    <thead className="bg-white">
-                      <tr>
-                        <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[#002147]/50">
+                <div className="responsive-table-scroll overflow-x-auto">
+                  <table role="table" className="responsive-table min-w-full divide-y divide-ink/10">
+                    <thead role="rowgroup" className="bg-surface">
+                      <tr role="row">
+                        <th scope="col" role="columnheader" className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-ink/50">
                           Usuario
                         </th>
 
-                        <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[#002147]/50">
+                        <th scope="col" role="columnheader" className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-ink/50">
+                          Documento
+                        </th>
+
+                        <th scope="col" role="columnheader" className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-ink/50">
                           Teléfono
                         </th>
 
-                        <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[#002147]/50">
+                        <th scope="col" role="columnheader" className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-ink/50">
                           Roles
                         </th>
 
-                        <th className="px-6 py-3 text-left text-xs font-semibold uppercase tracking-wider text-[#002147]/50">
-                          Estado
-                        </th>
-
-                        <th className="px-6 py-3 text-right text-xs font-semibold uppercase tracking-wider text-[#002147]/50">
+                        <th scope="col" role="columnheader" className="px-6 py-3 text-right text-xs font-semibold uppercase tracking-wider text-ink/50">
                           Acciones
                         </th>
                       </tr>
                     </thead>
 
-                    <tbody className="divide-y divide-[#002147]/10">
+                    <tbody role="rowgroup" className="divide-y divide-ink/10">
                       {users.map((user) => (
-                        <tr
+                        <tr role="row"
                           key={user.id}
-                          className="transition-colors hover:bg-[#0cb7f2]/5"
+                          className="transition-colors hover:bg-accent/5"
                         >
-                          <td className="whitespace-nowrap px-6 py-4">
-                            <p className="font-medium text-[#002147]">
+                          <td role="cell" data-label="Usuario" className="whitespace-nowrap px-6 py-4">
+                            <p className="font-medium text-ink">
                               {user.nombre}
                             </p>
 
-                            <p className="text-sm text-[#002147]/60">
+                            <p className="text-sm text-ink/60">
                               {user.email}
                             </p>
                           </td>
 
-                          <td className="whitespace-nowrap px-6 py-4 text-sm text-[#002147]/70">
+                          <td role="cell" data-label="Documento" className="whitespace-nowrap px-6 py-4 text-sm text-ink/70">
+                            {user.documento || "—"}
+                          </td>
+
+                          <td role="cell" data-label="Teléfono" className="whitespace-nowrap px-6 py-4 text-sm text-ink/70">
                             {user.telefono || "—"}
                           </td>
 
-                          <td className="px-6 py-4">
+                          <td role="cell" data-label="Roles" className="px-6 py-4">
                             <div className="flex flex-wrap gap-2">
                               {user.authorities?.map(
                                 (authority) => (
                                   <span
                                     key={authority}
-                                    className="rounded-full bg-[#0cb7f2]/10 px-2.5 py-1 text-xs font-medium text-[#0cb7f2] ring-1 ring-inset ring-[#0cb7f2]/20"
+                                    className="rounded-full bg-accent/10 px-2.5 py-1 text-xs font-medium text-link ring-1 ring-inset ring-accent/20"
                                   >
                                     {authority}
                                   </span>
@@ -554,19 +617,7 @@ export default function UserManagement() {
                             </div>
                           </td>
 
-                          <td className="whitespace-nowrap px-6 py-4">
-                            {user.isActive ? (
-                              <span className="rounded-full bg-[#0cb7f2]/10 px-2.5 py-1 text-xs font-medium text-[#0cb7f2] ring-1 ring-inset ring-[#0cb7f2]/20">
-                                Activo
-                              </span>
-                            ) : (
-                              <span className="rounded-full bg-[#002147]/5 px-2.5 py-1 text-xs font-medium text-[#002147]/50 ring-1 ring-inset ring-[#002147]/10">
-                                Inactivo
-                              </span>
-                            )}
-                          </td>
-
-                          <td className="px-6 py-4">
+                          <td role="cell" data-label="Acciones" className="px-6 py-4">
                             <div className="flex justify-end gap-2">
                               {!user.isActive && (
                                 <button
@@ -574,7 +625,7 @@ export default function UserManagement() {
                                   onClick={() =>
                                     activateUser(user)
                                   }
-                                  className="rounded-lg bg-[#0cb7f2] px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-[#002147]"
+                                  className="ui-primary rounded-lg px-3 py-2 text-xs font-semibold transition-colors"
                                 >
                                   Activar
                                 </button>
@@ -585,7 +636,7 @@ export default function UserManagement() {
                                 onClick={() =>
                                   startEditing(user)
                                 }
-                                className="rounded-lg bg-[#002147]/5 px-3 py-2 text-xs font-semibold text-[#002147] ring-1 ring-inset ring-[#002147]/15 transition-colors hover:bg-[#002147]/10"
+                                className="rounded-lg bg-ink/5 px-3 py-2 text-xs font-semibold text-ink ring-1 ring-inset ring-ink/15 transition-colors hover:bg-ink/10"
                               >
                                 Editar
                               </button>
@@ -595,7 +646,7 @@ export default function UserManagement() {
                                 onClick={() =>
                                   deleteUser(user)
                                 }
-                                className="rounded-lg bg-red-50 px-3 py-2 text-xs font-semibold text-red-600 ring-1 ring-inset ring-red-200 transition-colors hover:bg-red-100"
+                                className="rounded-lg bg-red-50 px-3 py-2 text-xs font-semibold text-red-600 ring-1 ring-inset ring-red-200 transition-colors hover:bg-red-100 dark:bg-red-500/10 dark:text-red-300 dark:ring-red-400/20 dark:border-red-400/25 dark:hover:bg-red-500/20"
                               >
                                 Eliminar
                               </button>

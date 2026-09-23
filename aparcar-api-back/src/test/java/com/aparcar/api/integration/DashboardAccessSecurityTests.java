@@ -18,15 +18,16 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * Caja negra: matriz de quién puede pegarle a qué endpoint, tal como lo
  * necesitan /dashboard-user y /dashboard-admin del frontend.
  *
- * Importante: /api/v1/visitantes, /api/v1/vehiculos y /api/v1/reservas
- * son usados por AMBOS dashboards (dashboard-admin carga visitantes y
- * vehículos, dashboard-user los lee para armar una reserva), así que a
- * nivel backend solo exigen estar autenticado, sin importar el rol. La
- * separación USER vs ADMIN es una decisión de UX del frontend
- * (requireAuth en cada page.jsx), no una restricción del backend. Estos
- * tests dejan eso documentado explícitamente: si alguien más adelante le
- * agrega hasAuthority("ADMIN") a uno de estos por error, rompería al otro
- * dashboard sin que sea obvio por qué.
+ * Importante: /api/v1/vehiculos y /api/v1/reservas los usan AMBOS
+ * dashboards, así que a nivel backend solo exigen estar autenticado; lo que
+ * cambia según el rol es el CONTENIDO (un visitante ve lo suyo, el admin ve
+ * todo), no el acceso. Estos tests dejan eso documentado: si alguien más
+ * adelante le agrega hasAuthority("ADMIN") a uno de estos por error,
+ * rompería al dashboard-user sin que sea obvio por qué.
+ *
+ * El catálogo /api/v1/visitantes sí es exclusivo del ADMIN, porque un
+ * visitante solo reserva a su nombre y no necesita ver a los demás; sus
+ * propios datos los pide por /api/v1/visitantes/me.
  */
 @IntegrationTests
 class DashboardAccessSecurityTests {
@@ -47,12 +48,23 @@ class DashboardAccessSecurityTests {
 
     @Test
     @WithMockUser(authorities = "USER")
-    @DisplayName("GET /api/v1/visitantes, /vehiculos y /reservas devuelven 200 para rol USER (los necesita dashboard-user)")
+    @DisplayName("GET /api/v1/vehiculos y /reservas devuelven 200 para rol USER (los necesita dashboard-user)")
     void sharedEndpointsAllowUserRole() throws Exception {
         var context = getContext();
-        mockMvc.perform(get("/api/v1/visitantes").with(securityContext(context))).andExpect(status().isOk());
         mockMvc.perform(get("/api/v1/vehiculos").with(securityContext(context))).andExpect(status().isOk());
         mockMvc.perform(get("/api/v1/reservas").with(securityContext(context))).andExpect(status().isOk());
+    }
+
+    // El catalogo de visitantes paso a ser exclusivo del ADMIN: un visitante
+    // solo reserva a su nombre, asi que no tiene por que ver quien mas esta
+    // cargado. Sus propios datos los pide por /visitantes/me.
+    @Test
+    @WithMockUser(username = "visitante@test.com", authorities = "USER")
+    @DisplayName("GET /api/v1/visitantes devuelve 403 para rol USER: el catalogo es del ADMIN")
+    void visitantesCatalogIsAdminOnly() throws Exception {
+        var context = getContext();
+        mockMvc.perform(get("/api/v1/visitantes").with(securityContext(context)))
+                .andExpect(status().isForbidden());
     }
 
     @Test

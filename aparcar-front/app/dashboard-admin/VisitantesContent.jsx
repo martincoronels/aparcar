@@ -1,79 +1,124 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { toast } from "sonner";
 import api from "@/app/api";
+import { formatoPatenteValido, MENSAJE_FORMATO_INVALIDO } from "@/utils/patenteValidation";
 
-const PATENTE_REGEX = /^([A-Za-z]{3}[0-9]{3}|[A-Za-z]{2}[0-9]{3}[A-Za-z]{2})$/;
-
-const visitanteSchema = z.object({
-  nombre: z.string().min(1, "El nombre es obligatorio"),
-  documento: z.string().min(1, "El documento es obligatorio"),
-  telefono: z.string().optional(),
-  email: z.string().email("Ingresa un correo válido").or(z.literal("")).optional(),
-  patente: z
-    .string()
-    .min(1, "La patente es obligatoria")
-    .regex(PATENTE_REGEX, "Formato inválido (ej: ABC123 o AB123CD)"),
-  tipo: z.enum(["AUTO", "MOTO", "CARGA"], {
-    message: "Selecciona un tipo de vehículo",
-  }),
-});
+const visitanteSchema = z
+  .object({
+    nombre: z.string().min(1, "El nombre es obligatorio"),
+    documento: z.string().min(1, "El documento es obligatorio"),
+    email: z.string().min(1, "El email es obligatorio").email("Ingresa un correo válido"),
+    telefono: z.string().optional(),
+    patente: z.string().min(1, "La patente es obligatoria"),
+    tipoVehiculo: z.enum(["AUTO", "MOTO", "CARGA"], {
+      message: "Selecciona un tipo de vehículo",
+    }),
+    cocheraId: z.string().min(1, "Selecciona una cochera"),
+    fecha: z.string().min(1, "Selecciona una fecha"),
+  })
+  .superRefine((data, ctx) => {
+    if (!formatoPatenteValido(data.patente, data.tipoVehiculo)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["patente"],
+        message: MENSAJE_FORMATO_INVALIDO[data.tipoVehiculo],
+      });
+    }
+  });
 
 const inputClasses =
-  "block w-full rounded-xl border-0 py-3 px-4 text-[#002147] bg-white ring-1 ring-inset ring-[#002147]/20 placeholder:text-[#002147]/40 focus:z-10 focus:ring-2 focus:ring-inset focus:ring-[#0cb7f2] sm:text-sm sm:leading-6 transition-all";
-const labelClasses = "block text-sm font-medium text-[#002147]/70 mb-1";
+  "ui-input";
+const labelClasses = "ui-label";
+const hoy = () => new Date().toISOString().split("T")[0];
 
-export default function VisitantesContent() {
+// Da de alta un visitante: crea la cuenta, su vehículo y la reserva para la
+// fecha elegida en una sola llamada. El backend lo resuelve
+// en una transacción, así que o entra todo o no entra nada — antes esto eran
+// dos llamadas sueltas y si la segunda fallaba quedaba un visitante huérfano.
+//
+// `onAltaCreada` es opcional: el panel lo usa para refrescar la ocupación y el
+// listado de reservas, que viven en componentes hermanos.
+export default function VisitantesContent({ onAltaCreada }) {
+  const [cocheras, setCocheras] = useState([]);
+
   const {
     register,
     handleSubmit,
+    watch,
     reset,
+    setValue,
     formState: { errors, isSubmitting },
   } = useForm({
     resolver: zodResolver(visitanteSchema),
-    defaultValues: { tipo: "AUTO" },
+    defaultValues: { tipoVehiculo: "AUTO", cocheraId: "", fecha: hoy() },
   });
+
+  const tipoVehiculo = watch("tipoVehiculo");
+  const fecha = watch("fecha");
+
+  // La disponibilidad depende de la fecha y del tipo de vehículo.
+  useEffect(() => {
+    let vigente = true;
+    setValue("cocheraId", "");
+    setCocheras([]);
+    if (!tipoVehiculo || !fecha) return;
+
+    api
+      .get("/api/v1/cocheras/disponibles", { params: { fecha, tipoVehiculo } })
+      .then((res) => {
+        if (vigente) setCocheras(res.data);
+      })
+      .catch(() => {
+        if (vigente) toast.error("No se pudieron cargar las cocheras disponibles.");
+      });
+    return () => { vigente = false; };
+  }, [tipoVehiculo, fecha, setValue]);
 
   const onSubmit = async (data) => {
     try {
-      const visitanteRes = await api.post("/api/v1/visitantes", {
+      await api.post("/api/v1/visitantes/alta", {
         nombre: data.nombre,
         documento: data.documento,
+        email: data.email,
         telefono: data.telefono || undefined,
-        email: data.email || undefined,
-      });
-
-      await api.post("/api/v1/vehiculos", {
         patente: data.patente,
-        tipo: data.tipo,
-        visitanteId: visitanteRes.data.id,
+        tipoVehiculo: data.tipoVehiculo,
+        cocheraId: data.cocheraId,
+        fecha: data.fecha,
       });
 
-      toast.success("Visitante y vehículo cargados correctamente");
-      reset();
+      toast.success(
+        `Visitante dado de alta y cochera reservada. Su contraseña inicial es su documento (${data.documento}).`
+      );
+      reset({ tipoVehiculo: "AUTO", cocheraId: "", fecha: hoy() });
+      onAltaCreada?.();
     } catch (err) {
       toast.error(
-        err.response?.data?.message || "Ocurrió un error al cargar el visitante."
+        err.response?.data?.message || "Ocurrió un error al dar de alta al visitante."
       );
     }
   };
 
   return (
-    <div className="mx-auto max-w-2xl">
-      <h1 className="text-3xl font-extrabold tracking-tight text-[#002147] mb-2">
+    <div className="visitor-section">
+      <p className="eyebrow mb-3">RECEPCIÓN DE VISITANTES</p>
+      <h1 className="text-3xl font-extrabold tracking-tight text-ink mb-2">
         Nuevo visitante
       </h1>
-      <p className="text-sm text-[#002147]/60 mb-8">
-        Cargá los datos del visitante junto con su vehículo.
+      <p className="text-sm text-ink/60 mb-8">
+        Cargá sus datos y su vehículo, y elegí la fecha y la cochera de la reserva. Queda con
+        cuenta creada y su documento como contraseña inicial.
       </p>
 
-      <div className="rounded-2xl bg-white p-8 shadow-xl shadow-[#002147]/10 ring-1 ring-[#002147]/15">
+      <div className="ui-card p-8">
         <form className="space-y-6" onSubmit={handleSubmit(onSubmit)}>
             <div>
-              <h2 className="text-sm font-semibold text-[#0cb7f2] uppercase tracking-wide mb-4">
+              <h2 className="text-sm font-semibold text-link uppercase tracking-wide mb-4">
                 Datos del visitante
               </h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -88,20 +133,20 @@ export default function VisitantesContent() {
                   {errors.documento && <p className="mt-1 text-sm text-red-500">{errors.documento.message}</p>}
                 </div>
                 <div>
-                  <label className={labelClasses} htmlFor="telefono">Teléfono (opcional)</label>
-                  <input id="telefono" {...register("telefono")} className={inputClasses} placeholder="Teléfono" />
+                  <label className={labelClasses} htmlFor="email">Email</label>
+                  <input id="email" type="email" {...register("email")} className={inputClasses} placeholder="Con esto inicia sesión" />
+                  {errors.email && <p className="mt-1 text-sm text-red-500">{errors.email.message}</p>}
                 </div>
                 <div>
-                  <label className={labelClasses} htmlFor="email">Email (opcional)</label>
-                  <input id="email" type="email" {...register("email")} className={inputClasses} placeholder="Email" />
-                  {errors.email && <p className="mt-1 text-sm text-red-500">{errors.email.message}</p>}
+                  <label className={labelClasses} htmlFor="telefono">Teléfono (opcional)</label>
+                  <input id="telefono" {...register("telefono")} className={inputClasses} placeholder="Teléfono" />
                 </div>
               </div>
             </div>
 
             <div>
-              <h2 className="text-sm font-semibold text-[#0cb7f2] uppercase tracking-wide mb-4">
-                Vehículo
+              <h2 className="text-sm font-semibold text-link uppercase tracking-wide mb-4">
+                Vehículo y cochera
               </h2>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
@@ -115,13 +160,35 @@ export default function VisitantesContent() {
                   {errors.patente && <p className="mt-1 text-sm text-red-500">{errors.patente.message}</p>}
                 </div>
                 <div>
-                  <label className={labelClasses} htmlFor="tipo">Tipo de vehículo</label>
-                  <select id="tipo" {...register("tipo")} className={inputClasses}>
+                  <label className={labelClasses} htmlFor="tipoVehiculo">Tipo de vehículo</label>
+                  <select id="tipoVehiculo" {...register("tipoVehiculo")} className={inputClasses}>
                     <option value="AUTO">Auto</option>
                     <option value="MOTO">Moto</option>
                     <option value="CARGA">Carga</option>
                   </select>
-                  {errors.tipo && <p className="mt-1 text-sm text-red-500">{errors.tipo.message}</p>}
+                  {errors.tipoVehiculo && <p className="mt-1 text-sm text-red-500">{errors.tipoVehiculo.message}</p>}
+                </div>
+                <div>
+                  <label className={labelClasses} htmlFor="alta-fecha">Fecha</label>
+                  <input id="alta-fecha" type="date" min={hoy()} {...register("fecha")} className={inputClasses} />
+                  {errors.fecha && <p className="mt-1 text-sm text-red-500">{errors.fecha.message}</p>}
+                </div>
+                <div className="sm:col-span-2">
+                  <label className={labelClasses} htmlFor="alta-cocheraId">Cochera</label>
+                  <select id="alta-cocheraId" {...register("cocheraId")} className={inputClasses} disabled={!fecha || !tipoVehiculo}>
+                    <option value="">Seleccioná una cochera</option>
+                    {cocheras.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.numero} — {c.sector} ({c.tipo})
+                      </option>
+                    ))}
+                  </select>
+                  {errors.cocheraId && <p className="mt-1 text-sm text-red-500">{errors.cocheraId.message}</p>}
+                  {fecha && cocheras.length === 0 && (
+                    <p className="mt-1 text-sm text-ink/50">
+                      No hay cocheras disponibles para esa fecha y tipo de vehículo.
+                    </p>
+                  )}
                 </div>
               </div>
             </div>
@@ -130,9 +197,9 @@ export default function VisitantesContent() {
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="group relative flex w-full justify-center rounded-xl bg-[#0cb7f2] px-3 py-3 text-sm font-semibold text-white hover:bg-[#002147] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0cb7f2] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                className="ui-primary group relative flex w-full justify-center px-3 py-3 text-sm font-semibold focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent transition-all disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {isSubmitting ? "Guardando..." : "Guardar visitante"}
+                {isSubmitting ? "Guardando..." : "Dar de alta y reservar"}
               </button>
             </div>
         </form>

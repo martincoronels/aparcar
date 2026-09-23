@@ -1,7 +1,7 @@
 package com.aparcar.api.security;
 
-import com.aparcar.api.entity.auth.AppUser;
-import com.aparcar.api.repository.AppUserRepository;
+import com.aparcar.api.entity.auth.Visitante;
+import com.aparcar.api.repository.VisitanteRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -21,12 +21,12 @@ import java.util.stream.Collectors;
  */
 @Service
 @RequiredArgsConstructor
-public class AppUserDetailsService implements UserDetailsService {
-    private final AppUserRepository appUserRepository;
+public class VisitanteDetailsService implements UserDetailsService {
+    private final VisitanteRepository visitanteRepository;
 
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        AppUser user = appUserRepository.findByEmail(username)
+        Visitante user = visitanteRepository.findByEmail(username)
                 .orElseThrow(() -> new UsernameNotFoundException("User not found for email " + username));
         List<GrantedAuthority> authorities = user.getAuthorities().stream()
                 .map(appAuthority -> new SimpleGrantedAuthority(appAuthority.name())).collect(Collectors.toList());

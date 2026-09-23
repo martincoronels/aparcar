@@ -9,7 +9,7 @@ export default function UnauthorizedPage() {
   const router = useRouter();
 
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center bg-white px-4">
+    <div className="flex min-h-screen flex-col items-center justify-center bg-bg px-4">
       <div className="flex flex-col items-center max-w-lg text-center space-y-6">
         <div className="flex h-20 w-20 items-center justify-center rounded-full bg-red-50">
           <svg className="h-10 w-10 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -17,9 +17,9 @@ export default function UnauthorizedPage() {
           </svg>
         </div>
 
-        <h1 className="text-4xl font-extrabold text-[#002147] tracking-tight">Acceso Denegado</h1>
+        <h1 className="text-4xl font-extrabold text-ink tracking-tight">Acceso Denegado</h1>
 
-        <p className="text-[#002147]/60 text-lg">
+        <p className="text-ink/60 text-lg">
           No tienes los permisos necesarios para ver esta página.
           {user && ` Estás identificado como '${user.roles?.join(', ') || 'usuario sin rol'}'.`}
         </p>
@@ -27,14 +27,14 @@ export default function UnauthorizedPage() {
         <div className="flex gap-4 pt-4">
           <button
             onClick={() => router.back()}
-            className="rounded-xl bg-white px-6 py-3 text-sm font-semibold text-[#002147] hover:bg-[#002147]/5 transition-all border border-[#002147]/20"
+            className="rounded-xl bg-surface px-6 py-3 text-sm font-semibold text-ink hover:bg-ink/5 transition-all border border-ink/20"
           >
             Volver atrás
           </button>
 
           <Link
             href="/"
-            className="rounded-xl bg-[#0cb7f2] px-6 py-3 text-sm font-semibold text-white hover:bg-[#002147] transition-all"
+            className="ui-primary px-6 py-3 text-sm font-semibold transition-all"
           >
             Ir al inicio
           </Link>

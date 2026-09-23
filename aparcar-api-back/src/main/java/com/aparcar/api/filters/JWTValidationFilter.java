@@ -80,7 +80,8 @@ public class JWTValidationFilter extends OncePerRequestFilter {
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
-        return request.getServletPath().equals("/login");
+        return request.getServletPath().equals("/login")
+                || request.getServletPath().equals("/register");
     }
 
     private void sendUnauthorized(HttpServletRequest request, HttpServletResponse response, String exceptionMessage)

@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { jwtDecode } from "jwt-decode";
 import api from "../api";
 import { useAuthStore } from "../../store/authStore";
+import AuthLayout from "@/components/AuthLayout";
 
 const loginSchema = z.object({
   email: z.string().email("Ingresa un correo válido"),
@@ -33,7 +34,7 @@ export default function LoginPage() {
       // devuelve el JWT en el header "Authorization" de la respuesta (no en
       // el body). Por eso acá no usamos el interceptor de `api` para el
       // Authorization saliente: lo seteamos manualmente como Basic.
-      const credentials = btoa(`${data.email}:${data.password}`);
+      const credentials = btoa(String.fromCharCode(...new TextEncoder().encode(`${data.email}:${data.password}`)));
       const response = await api.post(
         "/login",
         {},
@@ -75,26 +76,22 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-white px-4 py-12 sm:px-6 lg:px-8">
-      <div className="w-full max-w-md space-y-8 rounded-2xl bg-white p-8 shadow-xl shadow-[#002147]/10 ring-1 ring-[#002147]/15">
+    <AuthLayout>
+      <div className="auth-card ui-card">
         <div>
-          <img
-            src="/Logo.jpeg"
-            alt="AparcAR"
-            className="mx-auto h-40 w-auto object-contain"
-          />
-          <h2 className="mt-6 text-center text-3xl font-extrabold tracking-tight text-[#002147]">
+          <p className="eyebrow">BIENVENIDO A APARCAR</p>
+          <h2 className="mt-3 text-3xl tracking-tight text-ink">
             Iniciar sesión
           </h2>
-          <p className="mt-2 text-center text-sm text-[#002147]/60">
-            AparcAR — acceso para personal interno
+          <p className="mt-3 text-sm text-ink/60">
+            Accedé a tu cuenta de AparcAR
           </p>
         </div>
 
         <form className="mt-8 space-y-6" onSubmit={handleSubmit(onSubmit)}>
           <div className="space-y-4">
             <div>
-              <label htmlFor="email-address" className="sr-only">
+              <label htmlFor="email-address" className="ui-label">
                 Correo electrónico
               </label>
               <input
@@ -102,13 +99,13 @@ export default function LoginPage() {
                 type="email"
                 autoComplete="email"
                 {...register("email")}
-                className="relative block w-full rounded-xl border-0 py-3 px-4 text-[#002147] bg-white ring-1 ring-inset ring-[#002147]/20 placeholder:text-[#002147]/40 focus:z-10 focus:ring-2 focus:ring-inset focus:ring-[#0cb7f2] sm:text-sm sm:leading-6 transition-all"
+                className="ui-input"
                 placeholder="Correo electrónico"
               />
               {errors.email && <p className="mt-1 text-sm text-red-500">{errors.email.message}</p>}
             </div>
             <div>
-              <label htmlFor="password" className="sr-only">
+              <label htmlFor="password" className="ui-label">
                 Contraseña
               </label>
               <input
@@ -116,7 +113,7 @@ export default function LoginPage() {
                 type="password"
                 autoComplete="current-password"
                 {...register("password")}
-                className="relative block w-full rounded-xl border-0 py-3 px-4 text-[#002147] bg-white ring-1 ring-inset ring-[#002147]/20 placeholder:text-[#002147]/40 focus:z-10 focus:ring-2 focus:ring-inset focus:ring-[#0cb7f2] sm:text-sm sm:leading-6 transition-all"
+                className="ui-input"
                 placeholder="Contraseña"
               />
               {errors.password && <p className="mt-1 text-sm text-red-500">{errors.password.message}</p>}
@@ -127,7 +124,7 @@ export default function LoginPage() {
             <div className="text-sm">
               <Link
                 href="/recover-password"
-                className="font-medium text-[#0cb7f2] hover:text-[#002147] transition-colors"
+                className="font-medium text-link hover:text-ink transition-colors"
               >
                 ¿Olvidaste tu contraseña?
               </Link>
@@ -138,13 +135,19 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={isSubmitting}
-              className="group relative flex w-full justify-center rounded-xl bg-[#0cb7f2] px-3 py-3 text-sm font-semibold text-white hover:bg-[#002147] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0cb7f2] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              className="ui-primary group relative flex w-full justify-center px-3 py-3 text-sm font-semibold focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#0cb7f2] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isSubmitting ? "Iniciando..." : "Ingresar"}
             </button>
           </div>
         </form>
+        <p className="mt-7 border-t border-ink/10 pt-6 text-center text-sm text-ink/60">
+          ¿Todavía no tenés cuenta?{" "}
+          <Link href="/register" className="font-semibold text-link hover:text-ink transition-colors">
+            Registrate
+          </Link>
+        </p>
       </div>
-    </div>
+    </AuthLayout>
   );
 }

@@ -5,12 +5,12 @@ import com.aparcar.api.dto.reserva.ReservaRequestDto;
 import com.aparcar.api.dto.reserva.ReservaResponseDto;
 import com.aparcar.api.dto.reserva.VehiculoResponseDto;
 import com.aparcar.api.dto.reserva.VisitanteResponseDto;
+import com.aparcar.api.entity.auth.Visitante;
 import com.aparcar.api.entity.reserva.Cochera;
 import com.aparcar.api.entity.reserva.CocheraTipo;
 import com.aparcar.api.entity.reserva.Reserva;
 import com.aparcar.api.entity.reserva.ReservaEstado;
 import com.aparcar.api.entity.reserva.Vehiculo;
-import com.aparcar.api.entity.reserva.Visitante;
 import com.aparcar.api.exception.NotFoundException;
 import com.aparcar.api.exception.ValidationException;
 import com.aparcar.api.repository.CocheraRepository;
@@ -19,6 +19,7 @@ import com.aparcar.api.repository.VehiculoRepository;
 import com.aparcar.api.repository.VisitanteRepository;
 import com.aparcar.api.service.IReservaService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -36,9 +37,8 @@ public class ReservaService implements IReservaService {
 
     @Override
     @Transactional
-    public ReservaResponseDto crear(ReservaRequestDto dto) {
-        Visitante visitante = visitanteRepository.findById(dto.getVisitanteId())
-                .orElseThrow(() -> new NotFoundException("Visitante no encontrado."));
+    public ReservaResponseDto crear(ReservaRequestDto dto, String requesterEmail, boolean requesterIsAdmin) {
+        Visitante visitante = resolverVisitante(dto, requesterEmail, requesterIsAdmin);
 
         Vehiculo vehiculo = vehiculoRepository.findById(dto.getVehiculoId())
                 .orElseThrow(() -> new NotFoundException("Vehiculo no encontrado."));
@@ -64,13 +64,60 @@ public class ReservaService implements IReservaService {
     }
 
     @Override
-    public ReservaResponseDto obtenerPorId(UUID id) {
-        return toResponseDto(buscarPorId(id));
+    public ReservaResponseDto obtenerPorId(UUID id, String requesterEmail, boolean requesterIsAdmin) {
+        Reserva reserva = buscarPorId(id);
+
+        if (!requesterIsAdmin && !reserva.getVisitante().getEmail().equals(requesterEmail)) {
+            throw new AccessDeniedException("No podes ver una reserva que no es tuya.");
+        }
+
+        return toResponseDto(reserva);
     }
 
     @Override
-    public List<ReservaResponseDto> listar() {
-        return reservaRepository.findAll().stream().map(this::toResponseDto).toList();
+    public List<ReservaResponseDto> listar(String requesterEmail, boolean requesterIsAdmin) {
+        List<Reserva> reservas = requesterIsAdmin
+                ? reservaRepository.findAll()
+                : reservaRepository.findByVisitanteEmail(requesterEmail);
+
+        return reservas.stream().map(this::toResponseDto).toList();
+    }
+
+    @Override
+    @Transactional
+    public ReservaResponseDto cancelar(UUID id, String requesterEmail, boolean requesterIsAdmin) {
+        Reserva reserva = buscarPorId(id);
+
+        if (!requesterIsAdmin && !reserva.getVisitante().getEmail().equals(requesterEmail)) {
+            throw new AccessDeniedException("No podes cancelar una reserva que no es tuya.");
+        }
+
+        if (reserva.getEstado() == ReservaEstado.CANCELADA) {
+            throw new ValidationException("La reserva ya estaba cancelada.");
+        }
+
+        reserva.setEstado(ReservaEstado.CANCELADA);
+
+        return toResponseDto(reservaRepository.save(reserva));
+    }
+
+    /**
+     * Un visitante solo puede reservar a su nombre, asi que para un USER el
+     * visitanteId del request se ignora y se usa la cuenta autenticada. Solo el
+     * ADMIN puede reservar en nombre de otro.
+     */
+    private Visitante resolverVisitante(ReservaRequestDto dto, String requesterEmail, boolean requesterIsAdmin) {
+        if (!requesterIsAdmin) {
+            return visitanteRepository.findByEmail(requesterEmail)
+                    .orElseThrow(() -> new NotFoundException("Visitante no encontrado."));
+        }
+
+        if (dto.getVisitanteId() == null) {
+            throw new ValidationException("El visitante es obligatorio.");
+        }
+
+        return visitanteRepository.findById(dto.getVisitanteId())
+                .orElseThrow(() -> new NotFoundException("Visitante no encontrado."));
     }
 
     private void validarCompatibilidad(Cochera cochera, Vehiculo vehiculo) {
@@ -117,7 +164,8 @@ public class ReservaService implements IReservaService {
                 reserva.getCochera().getNumero(),
                 reserva.getCochera().getSector(),
                 reserva.getCochera().getTipo(),
-                reserva.getCochera().getEstado());
+                reserva.getCochera().getEstado(),
+                null);
 
         return new ReservaResponseDto(
                 reserva.getId(),

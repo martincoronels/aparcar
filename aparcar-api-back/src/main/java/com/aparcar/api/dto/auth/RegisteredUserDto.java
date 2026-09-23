@@ -6,6 +6,7 @@ import java.util.Set;
 
 public record RegisteredUserDto(
         String nombre,
+        String documento,
         String email,
         String telefono,
         Set<AppAuthority> authorities

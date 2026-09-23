@@ -5,18 +5,19 @@ import com.aparcar.api.dto.auth.RegisteredUserDto;
 import com.aparcar.api.dto.auth.RegistrationDto;
 import com.aparcar.api.dto.email.PlainEmailData;
 import com.aparcar.api.entity.auth.AppAuthority;
-import com.aparcar.api.entity.auth.AppUser;
 import com.aparcar.api.entity.auth.OneTimePassword;
+import com.aparcar.api.entity.auth.Visitante;
 import com.aparcar.api.exception.NotFoundException;
 import com.aparcar.api.exception.OTPException;
 import com.aparcar.api.exception.OTPExceptionReason;
 import com.aparcar.api.exception.ValidationException;
-import com.aparcar.api.repository.AppUserRepository;
 import com.aparcar.api.repository.OneTimePasswordRepository;
+import com.aparcar.api.repository.VisitanteRepository;
 import com.aparcar.api.service.IAuthService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.validation.annotation.Validated;
 
@@ -32,28 +33,50 @@ import java.util.Set;
 @Validated
 public class AuthService implements IAuthService {
     private final PasswordEncoder passwordEncoder;
-    private final AppUserRepository appUserRepository;
+    private final VisitanteRepository visitanteRepository;
     private final OneTimePasswordRepository otpRepository;
     private final IEmailSender emailSender;
 
     @Override
     public RegisteredUserDto register(RegistrationDto registrationDto) {
-        if (appUserRepository.existsByEmail(registrationDto.getEmail())) {
-            throw new ValidationException("Email already registered.");
+        if (visitanteRepository.existsByEmail(registrationDto.getEmail())) {
+            throw new ValidationException("Ya existe una cuenta asociada a ese email.");
         }
 
+        if (visitanteRepository.existsByDocumento(registrationDto.getDocumento())) {
+            throw new ValidationException("Ya existe un visitante con ese documento.");
+        }
+
+        // El registro público y el administrativo crean siempre un USER activo.
+        // Los roles solo se modifican desde Gestión de usuarios (ADMIN).
         String hashedPassword = passwordEncoder.encode(registrationDto.getPassword());
-        AppUser user = new AppUser(
+        Visitante user = new Visitante(
                 registrationDto.getNombre(),
+                registrationDto.getDocumento(),
                 registrationDto.getEmail(),
                 hashedPassword,
                 registrationDto.getTelefono(),
                 Set.of(AppAuthority.USER),
-                false);
-        AppUser savedUser = appUserRepository.save(user);
+                true);
+        Visitante savedUser;
+        try {
+            // save realiza su propia transacción. Si otra solicitud gana la
+            // carrera, la restricción UNIQUE impide crear una segunda cuenta.
+            savedUser = visitanteRepository.save(user);
+        } catch (DataIntegrityViolationException ex) {
+            // Consultar después del rollback, nunca en una transacción fallida.
+            if (visitanteRepository.existsByEmail(registrationDto.getEmail())) {
+                throw new ValidationException("Ya existe una cuenta asociada a ese email.");
+            }
+            if (visitanteRepository.existsByDocumento(registrationDto.getDocumento())) {
+                throw new ValidationException("Ya existe un visitante con ese documento.");
+            }
+            throw ex;
+        }
 
         return new RegisteredUserDto(
                 savedUser.getNombre(),
+                savedUser.getDocumento(),
                 savedUser.getEmail(),
                 savedUser.getTelefono(),
                 savedUser.getAuthorities());
@@ -61,7 +84,7 @@ public class AuthService implements IAuthService {
 
     @Override
     public void createAndSendOTP(String email) {
-        AppUser user = appUserRepository.findByEmail(email)
+        Visitante user = visitanteRepository.findByEmail(email)
                 .orElseThrow(() -> new NotFoundException("User not found."));
 
         otpRepository.findByUser(user).ifPresent(otp -> {
@@ -88,7 +111,7 @@ public class AuthService implements IAuthService {
 
     @Override
     public void resetPassword(String email, String token, String newPassword) {
-        AppUser user = appUserRepository.findByEmail(email)
+        Visitante user = visitanteRepository.findByEmail(email)
                 .orElseThrow(() -> new NotFoundException("User not found."));
 
         OneTimePassword otp;
@@ -108,6 +131,6 @@ public class AuthService implements IAuthService {
         otpRepository.save(otp);
 
         user.setPassword(passwordEncoder.encode(newPassword));
-        appUserRepository.save(user);
+        visitanteRepository.save(user);
     }
 }

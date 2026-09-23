@@ -1,8 +1,8 @@
 package com.aparcar.api.security;
 
 import com.aparcar.api.entity.auth.AppAuthority;
-import com.aparcar.api.entity.auth.AppUser;
-import com.aparcar.api.repository.AppUserRepository;
+import com.aparcar.api.entity.auth.Visitante;
+import com.aparcar.api.repository.VisitanteRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -21,27 +21,27 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.when;
 
 /**
- * Caja blanca: prueba directamente el puente entre AppUser y
+ * Caja blanca: prueba directamente el puente entre Visitante y
  * UserDetails que usa Spring Security para autenticar.
  */
 @ExtendWith(MockitoExtension.class)
-class AppUserDetailsServiceTests {
+class VisitanteDetailsServiceTests {
 
     @Mock
-    private AppUserRepository appUserRepository;
+    private VisitanteRepository visitanteRepository;
 
     @InjectMocks
-    private AppUserDetailsService appUserDetailsService;
+    private VisitanteDetailsService appUserDetailsService;
 
     @Test
-    @DisplayName("loadUserByUsername mapea las authorities del AppUser a GrantedAuthority")
+    @DisplayName("loadUserByUsername mapea las authorities del Visitante a GrantedAuthority")
     void loadUserByUsernameMapsAuthorities() {
-        AppUser user = new AppUser();
+        Visitante user = new Visitante();
         user.setEmail("mateo@mateo.com");
         user.setPassword("hashed-password");
         user.setAuthorities(Set.of(AppAuthority.USER, AppAuthority.ADMIN));
 
-        when(appUserRepository.findByEmail("mateo@mateo.com")).thenReturn(Optional.of(user));
+        when(visitanteRepository.findByEmail("mateo@mateo.com")).thenReturn(Optional.of(user));
 
         UserDetails result = appUserDetailsService.loadUserByUsername("mateo@mateo.com");
 
@@ -55,7 +55,7 @@ class AppUserDetailsServiceTests {
     @Test
     @DisplayName("loadUserByUsername lanza UsernameNotFoundException si el email no existe")
     void loadUserByUsernameThrowsWhenUserNotFound() {
-        when(appUserRepository.findByEmail("no-existe@mateo.com")).thenReturn(Optional.empty());
+        when(visitanteRepository.findByEmail("no-existe@mateo.com")).thenReturn(Optional.empty());
 
         assertThrows(UsernameNotFoundException.class,
                 () -> appUserDetailsService.loadUserByUsername("no-existe@mateo.com"));

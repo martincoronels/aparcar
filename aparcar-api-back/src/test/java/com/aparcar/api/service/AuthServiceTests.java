@@ -5,11 +5,11 @@ import com.aparcar.api.config.UnitTests;
 import com.aparcar.api.dto.auth.RegisteredUserDto;
 import com.aparcar.api.dto.auth.RegistrationDto;
 import com.aparcar.api.dto.email.PlainEmailData;
-import com.aparcar.api.entity.auth.AppUser;
+import com.aparcar.api.entity.auth.Visitante;
 import com.aparcar.api.entity.auth.OneTimePassword;
 import com.aparcar.api.exception.NotFoundException;
 import com.aparcar.api.exception.ValidationException;
-import com.aparcar.api.repository.AppUserRepository;
+import com.aparcar.api.repository.VisitanteRepository;
 import com.aparcar.api.repository.OneTimePasswordRepository;
 import com.aparcar.api.service.impl.AuthService;
 import org.junit.jupiter.api.DisplayName;
@@ -18,6 +18,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.dao.DataIntegrityViolationException;
 
 import java.time.Instant;
 import java.util.Optional;
@@ -33,7 +34,7 @@ public class AuthServiceTests {
     private PasswordEncoder passwordEncoder;
 
     @Mock
-    private AppUserRepository appUserRepository;
+    private VisitanteRepository visitanteRepository;
 
     @Mock
     private OneTimePasswordRepository otpRepository;
@@ -48,47 +49,84 @@ public class AuthServiceTests {
     private final String notFoundEmail = "notfound@email.com";
 
     @Test
+    void concurrentEmailConflictReturnsValidationError() {
+        when(visitanteRepository.existsByEmail(existingEmail)).thenReturn(false, true);
+        when(visitanteRepository.save(any(Visitante.class)))
+                .thenThrow(new DataIntegrityViolationException("unique email"));
+        ValidationException error = assertThrows(ValidationException.class, () ->
+                authService.register(new RegistrationDto("Test", "30111222", existingEmail, "password123", null)));
+        assertEquals("Ya existe una cuenta asociada a ese email.", error.getMessage());
+    }
+
+    @Test
+    void concurrentDocumentConflictReturnsValidationError() {
+        when(visitanteRepository.existsByDocumento("30111222")).thenReturn(false, true);
+        when(visitanteRepository.save(any(Visitante.class)))
+                .thenThrow(new DataIntegrityViolationException("unique document"));
+        ValidationException error = assertThrows(ValidationException.class, () ->
+                authService.register(new RegistrationDto("Test", "30111222", existingEmail, "password123", null)));
+        assertEquals("Ya existe un visitante con ese documento.", error.getMessage());
+    }
+
+    @Test
     @DisplayName("register throws ValidationException when email already registered")
     void registerThrowsValidationExceptionWhenEmailAlreadyRegistered() {
         // Arrange
-        when(appUserRepository.existsByEmail(existingEmail)).thenReturn(true);
+        when(visitanteRepository.existsByEmail(existingEmail)).thenReturn(true);
 
         // Act & Assert
         assertThrows(ValidationException.class, () ->
-                authService.register(new RegistrationDto("Test User", existingEmail, "password123", null)));
+                authService.register(new RegistrationDto("Test User", "30111222", existingEmail, "password123", null)));
+    }
+
+    // El documento identifica al visitante y toda cuenta es un visitante, asi
+    // que el alta administrativa tambien tiene que respetar que sea unico.
+    @Test
+    @DisplayName("register throws ValidationException when documento already registered")
+    void registerThrowsValidationExceptionWhenDocumentoAlreadyRegistered() {
+        when(visitanteRepository.existsByEmail(notFoundEmail)).thenReturn(false);
+        when(visitanteRepository.existsByDocumento("30111222")).thenReturn(true);
+
+        assertThrows(ValidationException.class, () ->
+                authService.register(new RegistrationDto("Test User", "30111222", notFoundEmail, "password123", null)));
     }
 
     @Test
     @DisplayName("register successfully creates a new user")
     void registerSuccessfullyCreatesNewUser() {
         // Arrange
-        when(appUserRepository.existsByEmail(notFoundEmail)).thenReturn(false);
+        when(visitanteRepository.existsByEmail(notFoundEmail)).thenReturn(false);
         when(passwordEncoder.encode("password123")).thenReturn("hashedPassword");
-        when(appUserRepository.save(any(AppUser.class))).thenAnswer(i -> i.getArguments()[0]);
+        when(visitanteRepository.save(any(Visitante.class))).thenAnswer(i -> i.getArguments()[0]);
 
         // Act
-        RegisteredUserDto result = authService.register(new RegistrationDto("Test User", notFoundEmail, "password123", null));
+        RegisteredUserDto result = authService.register(
+                new RegistrationDto("Test User", "30111222", notFoundEmail, "password123", null));
 
         // Assert
         assertEquals(result.email(), notFoundEmail);
+        assertEquals("30111222", result.documento());
         assertEquals(1, result.authorities().size());
         assertEquals("USER", result.authorities().iterator().next().name());
 
-        ArgumentCaptor<AppUser> captor = ArgumentCaptor.forClass(AppUser.class);
-        verify(appUserRepository).save(captor.capture());
-        AppUser savedUser = captor.getValue();
+        ArgumentCaptor<Visitante> captor = ArgumentCaptor.forClass(Visitante.class);
+        verify(visitanteRepository).save(captor.capture());
+        Visitante savedUser = captor.getValue();
         assertEquals(notFoundEmail, savedUser.getEmail());
+        assertEquals("30111222", savedUser.getDocumento());
         assertEquals("hashedPassword", savedUser.getPassword());
         assertEquals(1, savedUser.getAuthorities().size());
         assertEquals("USER", savedUser.getAuthorities().iterator().next().name());
-        assertEquals(false, savedUser.getIsActive());
+        // Nace activa: la crea un admin desde el panel, no alguien registrandose
+        // solo, asi que no hay nada que aprobar despues.
+        assertEquals(true, savedUser.getIsActive());
     }
 
     @Test
     @DisplayName("createAndSendOTP throws NotFoundException when user not found")
     void createAndSendOTPThrowsNotFoundExceptionWhenUserNotFound() {
         // Arrange
-        when(appUserRepository.findByEmail(notFoundEmail)).thenReturn(Optional.empty());
+        when(visitanteRepository.findByEmail(notFoundEmail)).thenReturn(Optional.empty());
 
         // Act & Assert
         assertThrows(NotFoundException.class, () -> authService.createAndSendOTP(notFoundEmail));
@@ -98,10 +136,10 @@ public class AuthServiceTests {
     @DisplayName("createAndSendOTP successfully creates and sends OTP")
     void createAndSendOTPSuccessfullyCreatesAndSendsOTP() {
         // Arrange
-        AppUser user = new AppUser();
+        Visitante user = new Visitante();
         user.setEmail(existingEmail);
-        when(appUserRepository.findByEmail(existingEmail)).thenReturn(Optional.of(user));
-        when(otpRepository.findByUser(any(AppUser.class))).thenReturn(Optional.of(new OneTimePassword()));
+        when(visitanteRepository.findByEmail(existingEmail)).thenReturn(Optional.of(user));
+        when(otpRepository.findByUser(any(Visitante.class))).thenReturn(Optional.of(new OneTimePassword()));
         doNothing().when(otpRepository).delete(any(OneTimePassword.class));
         when(otpRepository.save(any(OneTimePassword.class))).thenAnswer(i -> i.getArguments()[0]);
         doNothing().when(emailSender).sendPlainTextEmail(any(PlainEmailData.class));
@@ -128,7 +166,7 @@ public class AuthServiceTests {
     @DisplayName("resetPassword throws NotFoundException when user not found")
     void resetPasswordThrowsNotFoundExceptionWhenUserNotFound() {
         // Arrange
-        when(appUserRepository.findByEmail(notFoundEmail)).thenReturn(Optional.empty());
+        when(visitanteRepository.findByEmail(notFoundEmail)).thenReturn(Optional.empty());
 
         // Act & Assert
         assertThrows(NotFoundException.class, () ->
@@ -139,8 +177,8 @@ public class AuthServiceTests {
     @DisplayName("resetPassword throws OTPException when OTP is invalid")
     void resetPasswordThrowsOTPExceptionWhenOTPIsInvalid() {
         // Arrange
-        when(appUserRepository.findByEmail(existingEmail)).thenReturn(Optional.of(new AppUser()));
-        when(otpRepository.findByUserAndToken(any(AppUser.class), any(String.class)))
+        when(visitanteRepository.findByEmail(existingEmail)).thenReturn(Optional.of(new Visitante()));
+        when(otpRepository.findByUserAndToken(any(Visitante.class), any(String.class)))
                 .thenReturn(Optional.empty());
 
         // Act & Assert
@@ -152,8 +190,8 @@ public class AuthServiceTests {
     @DisplayName("resetPassword throws OTPException when OTP is expired")
     void resetPasswordThrowsOTPExceptionWhenOTPIsExpired() {
         // Arrange
-        when(appUserRepository.findByEmail(existingEmail)).thenReturn(Optional.of(new AppUser()));
-        when(otpRepository.findByUserAndToken(any(AppUser.class), any(String.class)))
+        when(visitanteRepository.findByEmail(existingEmail)).thenReturn(Optional.of(new Visitante()));
+        when(otpRepository.findByUserAndToken(any(Visitante.class), any(String.class)))
                 .thenReturn(Optional.of(new OneTimePassword(
                         null, "expiredToken", Instant.now().minusSeconds(60))));
 
@@ -166,21 +204,21 @@ public class AuthServiceTests {
     @DisplayName("resetPassword successfully resets the user's password")
     void resetPasswordSuccessfullyResetsUserPassword() {
         // Arrange
-        when(appUserRepository.findByEmail(existingEmail)).thenReturn(Optional.of(new AppUser()));
-        when(otpRepository.findByUserAndToken(any(AppUser.class), any(String.class)))
+        when(visitanteRepository.findByEmail(existingEmail)).thenReturn(Optional.of(new Visitante()));
+        when(otpRepository.findByUserAndToken(any(Visitante.class), any(String.class)))
                 .thenReturn(Optional.of(new OneTimePassword(
                         null, "valid token", Instant.now().plusSeconds(60))));
         when(otpRepository.save(any(OneTimePassword.class))).thenAnswer(i -> i.getArguments()[0]);
         when(passwordEncoder.encode("newPassword123")).thenReturn("hashedNewPassword");
-        when(appUserRepository.save(any(AppUser.class))).thenAnswer(i -> i.getArguments()[0]);
+        when(visitanteRepository.save(any(Visitante.class))).thenAnswer(i -> i.getArguments()[0]);
 
         // Act
         authService.resetPassword(existingEmail, "valid token", "newPassword123");
 
         // Assert
-        ArgumentCaptor<AppUser> captor = ArgumentCaptor.forClass(AppUser.class);
-        verify(appUserRepository, times(1)).save(captor.capture());
-        AppUser updatedUser = captor.getValue();
+        ArgumentCaptor<Visitante> captor = ArgumentCaptor.forClass(Visitante.class);
+        verify(visitanteRepository, times(1)).save(captor.capture());
+        Visitante updatedUser = captor.getValue();
         assertEquals("hashedNewPassword", updatedUser.getPassword());
     }
 }

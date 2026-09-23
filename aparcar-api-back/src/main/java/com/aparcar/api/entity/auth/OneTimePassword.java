@@ -22,7 +22,7 @@ public class OneTimePassword {
 
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
-    private AppUser user;
+    private Visitante user;
 
     @Column(name = "expires_at", nullable = false)
     private Instant expiresAt;
@@ -30,7 +30,7 @@ public class OneTimePassword {
     @Column(name = "used", nullable = false)
     private boolean used;
 
-    public OneTimePassword(AppUser user, String token, Instant expiresAt) {
+    public OneTimePassword(Visitante user, String token, Instant expiresAt) {
         this.token = token;
         this.user = user;
         this.expiresAt = expiresAt;
